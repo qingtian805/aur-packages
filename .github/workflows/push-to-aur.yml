@@ -67,7 +67,8 @@ jobs:
         uses: actions/checkout@v5
 
       - name: Publish ${{ matrix.package }} to AUR
-        uses: KSXGitHub/github-actions-deploy-aur@v2.7.0
+        uses: KSXGitHub/github-actions-deploy-aur@v4.1.1
+
         with:
           pkgname: ${{ matrix.package }}
           pkgbuild: packages/${{ matrix.package }}/PKGBUILD
