@@ -1,0 +1,20 @@
+name: Keep Repository Alive
+
+on:
+  schedule:
+    - cron: '0 0 1 * *'
+  workflow_dispatch:
+permissions:
+  actions: write
+  contents: write
+jobs:
+  alive:
+    runs-on: ubuntu-latest
+    steps:
+      - shell: bash
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: |
+          gh api repos/${{ github.repository }}/actions/workflows --jq '.workflows[] | .id' | while read -r id; do
+            gh api -X PUT "repos/${{github.repository}}/actions/workflows/${id}/enable"
+          done
