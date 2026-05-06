@@ -29,6 +29,8 @@ package() {
     cp -a ${srcdir}/squashfs-root/. ${pkgdir}/opt/${_pkgname}/
     install -Dm644 "squashfs-root/navicat.desktop" \
         "${pkgdir}/usr/share/applications/navicat.desktop"
+    # Use libsystemd.so from host system to fix libmount.so missing dependency issue 
+    sed -i "s#Exec=navicat#Exec=env LD_PRELOAD=\"/usr/lib/libsystemd.so.0\" navicat#" "${pkgdir}/usr/share/applications/navicat.desktop"
 
     install -dm755 "${pkgdir}/usr/share/icons/hicolor/256x256/apps"
     install -Dm644 "squashfs-root/usr/share/icons/hicolor/256x256/apps/navicat-icon.png" \
