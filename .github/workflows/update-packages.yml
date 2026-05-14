@@ -131,5 +131,5 @@ jobs:
                      -m "Updated ${updated_count} package(s)" \
                      -m "Co-Authored-By: github-actions[bot] <github-actions[bot]@users.noreply.github.com>"
 
-          git push origin main
+          git push origin "HEAD:${{ github.ref_name }}"
           EOF
