@@ -29,8 +29,13 @@ package() {
     cp -a ${srcdir}/squashfs-root/. ${pkgdir}/opt/${_pkgname}/
     install -Dm644 "squashfs-root/navicat.desktop" \
         "${pkgdir}/usr/share/applications/navicat.desktop"
-    # Use libsystemd.so from host system to fix libmount.so missing dependency issue 
+    # The AppImage bundles a libsystemd.so that conflicts with libmount.so's needs.
+    # Preload the host system's libsystemd.so.0 so bundled libmount.so resolves correctly.
     sed -i "s#Exec=navicat#Exec=env LD_PRELOAD=\"/usr/lib/libsystemd.so.0\" navicat#" "${pkgdir}/usr/share/applications/navicat.desktop"
+    if ! grep -q "LD_PRELOAD" "${pkgdir}/usr/share/applications/navicat.desktop"; then
+        echo "ERROR: Failed to apply LD_PRELOAD patch to navicat.desktop" >&2
+        return 1
+    fi
 
     install -dm755 "${pkgdir}/usr/share/icons/hicolor/256x256/apps"
     install -Dm644 "squashfs-root/usr/share/icons/hicolor/256x256/apps/navicat-icon.png" \

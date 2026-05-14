@@ -6,7 +6,6 @@ on:
   workflow_dispatch:
 permissions:
   actions: write
-  contents: write
 jobs:
   alive:
     runs-on: ubuntu-latest
@@ -15,6 +14,22 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ github.token }}
         run: |
-          gh api repos/${{ github.repository }}/actions/workflows --jq '.workflows[] | .id' | while read -r id; do
-            gh api -X PUT "repos/${{github.repository}}/actions/workflows/${id}/enable"
+          set -euo pipefail
+
+          REPO="${{ github.repository }}"
+          echo "Fetching workflows for ${REPO}..."
+
+          workflow_ids=$(gh api "repos/${REPO}/actions/workflows" --jq '.workflows[] | select(.name != "Keep Repository Alive") | .id')
+          if [ -z "$workflow_ids" ]; then
+            echo "::error::No workflows found or API call failed"
+            exit 1
+          fi
+
+          echo "Found workflows:"
+          echo "$workflow_ids" | while read -r id; do
+            echo "Enabling workflow ID: ${id}"
+            if ! gh api -X PUT "repos/${REPO}/actions/workflows/${id}/enable"; then
+              echo "::error::Failed to enable workflow ID: ${id}"
+              exit 1
+            fi
           done
