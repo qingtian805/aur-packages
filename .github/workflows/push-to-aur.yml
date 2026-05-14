@@ -33,7 +33,7 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v5
+        uses: actions/checkout@v6
 
       - name: Set matrix
         id: set_matrix
@@ -43,7 +43,6 @@ jobs:
             packages=$(echo "${{ github.event.inputs.packages }}" | tr ',' '\n' | jq -R . | jq -s -c .)
           else
             # Only include packages whose PKGBUILD was changed in the latest commit
-            changed=false
             UPDATED=()
             for pkg_path in packages/*/; do
               [ -d "$pkg_path" ] || continue
@@ -84,7 +83,7 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v5
+        uses: actions/checkout@v6
 
       - name: Publish ${{ matrix.package }} to AUR
         uses: KSXGitHub/github-actions-deploy-aur@v4.1.3

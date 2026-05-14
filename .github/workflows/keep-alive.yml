@@ -26,10 +26,10 @@ jobs:
           fi
 
           echo "Found workflows:"
-          echo "$workflow_ids" | while read -r id; do
+          while read -r id; do
             echo "Enabling workflow ID: ${id}"
             if ! gh api -X PUT "repos/${REPO}/actions/workflows/${id}/enable"; then
               echo "::error::Failed to enable workflow ID: ${id}"
               exit 1
             fi
-          done
+          done < <(echo "$workflow_ids")
