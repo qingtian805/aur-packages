@@ -35,7 +35,7 @@ jobs:
           # Configure git for builder user
           sudo -u "${{ env.BUILDER_USER }}" git config --global user.name "${{ env.GIT_AUTHOR_NAME }}"
           sudo -u "${{ env.BUILDER_USER }}" git config --global user.email "${{ env.GIT_AUTHOR_EMAIL }}"
-          sudo -u "${{ env.BUILDER_USER }}" git config --global --add safe.directory "*"
+          sudo -u "${{ env.BUILDER_USER }}" git config --global --add safe.directory "${GITHUB_WORKSPACE}"
 
       - name: Checkout repository
         uses: actions/checkout@v5

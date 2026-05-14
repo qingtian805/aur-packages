@@ -9,7 +9,7 @@
 
 from pathlib import Path
 
-from constants.constants import DOWNLOAD_DIR, ParserEnum
+from constants.constants import DOWNLOAD_DIR, ArchEnum, HashAlgorithmEnum, ParserEnum
 from fetcher.fetcher import Fetcher
 from loaders.config_loader import ConfigLoader, PackageConfig
 from parsers.base_parser import BaseParser
@@ -56,6 +56,10 @@ class PackageUpdater:
         # PKGBUILD目录相对于项目根目录
         self.pkgbuild_root = self.project_root.parent
 
+    async def close(self) -> None:
+        """关闭 httpx AsyncClient，释放资源"""
+        await self.fetcher.client.aclose()
+
     def _get_pkgbuild_path(self, pkgbuild_relative_path: str) -> Path:
         """
         获取PKGBUILD文件的完整路径
@@ -95,7 +99,7 @@ class PackageUpdater:
         return True
 
     async def _fetch_arch_urls(
-        self, parser: BaseParser, supported_archs: list, response_data: str
+        self, parser: BaseParser, supported_archs: list[ArchEnum], response_data: str
     ) -> dict[str, str]:
         """获取所有架构的下载 URL"""
         arch_urls = {}
@@ -248,7 +252,7 @@ class PackageUpdater:
         new_version: str,
         current_version: str,
         parser: BaseParser,
-        supported_archs: list,
+        supported_archs: list[ArchEnum],
         response_data: str,
     ) -> bool:
         """
@@ -346,7 +350,7 @@ class PackageUpdater:
         current_version: str,
         editor: PKGBUILDEditor,
         parser: BaseParser,
-        supported_archs: list,
+        supported_archs: list[ArchEnum],
         response_data: str,
         package_config: PackageConfig,
     ) -> bool:
@@ -384,17 +388,25 @@ class PackageUpdater:
 
     async def _calculate_checksum(self, file_path: Path) -> str:
         """计算文件的 SHA512 校验和"""
+        import asyncio
+        from functools import partial
+
         from utils.hash import calculate_file_hash
-        from constants.constants import HashAlgorithmEnum
 
-        return calculate_file_hash(file_path, HashAlgorithmEnum.SHA512.value)
+        loop = asyncio.get_running_loop()
+        return await loop.run_in_executor(
+            None, partial(calculate_file_hash, file_path, HashAlgorithmEnum.SHA512.value)
+        )
 
-    async def update_all_packages(self) -> None:
+    async def update_all_packages(self) -> tuple[int, int]:
         """
         更新所有配置的包
 
         串行处理所有包（一个包处理完后才处理下一个）
         每个包的多个架构并行下载（通过 Downloader 实现）
+
+        Returns:
+            (成功数量, 总数量)
         """
         # 过滤出启用的包
         enabled_packages = {
@@ -428,7 +440,7 @@ class PackageUpdater:
 
         if not valid_packages:
             print("\n没有可更新的包")
-            return
+            return 0, 0
 
         success_count = 0
         total_count = len(valid_packages)
@@ -441,6 +453,7 @@ class PackageUpdater:
 
         print()
         print(f"更新完成: {success_count}/{total_count} 个包更新成功")
+        return success_count, total_count
 
     def _is_package_updatable(
         self, package_name: str, package_config: PackageConfig

@@ -13,6 +13,8 @@ class QQParser(BaseParser):
 
     def parse_version(self, response_data: str | Any) -> str | None:
         """从 QQ 响应数据中提取版本号"""
+        if not isinstance(response_data, str):
+            return None
         url: str | None = self.parse_url(ArchEnum.X86_64, response_data)
         if not url:
             return None
@@ -22,6 +24,8 @@ class QQParser(BaseParser):
 
     def parse_url(self, arch: ArchEnum | str, response_data: str | Any) -> str | None:
         """从 QQ 响应数据中提取指定架构的下载 URL"""
+        if not isinstance(response_data, str):
+            return None
         arch_value: str = arch.value if isinstance(arch, ArchEnum) else arch
 
         pattern: str = r"var params\s*=\s*(\{.*?\});"

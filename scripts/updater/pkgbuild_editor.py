@@ -2,8 +2,6 @@
 
 import re
 from pathlib import Path
-from typing import Union
-
 from constants.constants import HashAlgorithmEnum
 from utils.hash import calculate_file_hash, verify_file_hash
 
@@ -75,9 +73,18 @@ class PKGBUILDEditor:
 
     def update_source_url(self, arch: str, new_url: str) -> None:
         """更新特定架构的 source URL"""
-        pattern = f"^source_{arch}=\\(.*\\)$"
-        replacement = f"source_{arch}=('{new_url}')"
-        self.content = re.sub(pattern, replacement, self.content, flags=re.MULTILINE)
+        pattern = f"^source_{arch}=\\((?:'([^']*)::[^']*'|.*)\\)$"
+        match = re.search(pattern, self.content, flags=re.MULTILINE)
+        if match and match.group(1):
+            replacement = f"source_{arch}=('{match.group(1)}::{new_url}')"
+        else:
+            replacement = f"source_{arch}=('{new_url}')"
+        self.content = re.sub(
+            f"^source_{arch}=\\(.*\\)$",
+            replacement,
+            self.content,
+            flags=re.MULTILINE,
+        )
 
     def get_pkgver(self) -> str:
         """获取当前 pkgver 值"""
@@ -97,9 +104,9 @@ class PKGBUILDEditor:
     def get_checksum(self, arch: str | None = None) -> str:
         """获取当前校验和值"""
         if arch:
-            pattern = f"^sha512sums_{arch}=\\('(.*)'\\)$"
+            pattern = f"^sha512sums_{arch}=\\((?:'([^']*)'.*)?\\)$"
         else:
-            pattern = r"^sha512sums=\(\'(.*)\'\)$"
+            pattern = r"^sha512sums=\((?:'([^']*)'.*)?\)$"
 
         match = re.search(pattern, self.content, flags=re.MULTILINE)
         return match.group(1) if match else ""
@@ -118,7 +125,7 @@ class PKGBUILDEditor:
         self.update_pkgver(new_version)
         self.update_pkgrel(new_pkgrel)
 
-        if new_epoch:
+        if new_epoch is not None:
             self.update_epoch(new_epoch)
 
         if generic_checksum:
@@ -147,7 +154,7 @@ class PKGBUILDEditor:
 
     def calculate_and_update_checksum(
         self,
-        file_path: Union[str, Path],
+        file_path: str | Path,
         arch: str | None = None,
         hash_algorithm: str = HashAlgorithmEnum.SHA512.value,
     ) -> None:
@@ -175,7 +182,7 @@ class PKGBUILDEditor:
 
     def verify_existing_checksum(
         self,
-        file_path: Union[str, Path],
+        file_path: str | Path,
         expected_hash: str,
         arch: str | None = None,
         hash_algorithm: str = HashAlgorithmEnum.SHA512.value,

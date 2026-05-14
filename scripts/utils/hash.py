@@ -1,10 +1,15 @@
 """哈希计算工具模块"""
 
 import hashlib
+from collections.abc import Callable
 from pathlib import Path
-from typing import Callable
 
 from constants.constants import HashAlgorithmEnum
+
+_HASH_BUILDERS: dict[str, Callable[[], hashlib._hashlib.HASH]] = {
+    HashAlgorithmEnum.SHA256.value: hashlib.sha256,
+    HashAlgorithmEnum.SHA512.value: hashlib.sha512,
+}
 
 
 def calculate_file_hash(
@@ -20,19 +25,14 @@ def calculate_file_hash(
     if not file_path.exists():
         raise FileNotFoundError(f"文件不存在: {file_path}")
 
-    supported_algorithms: dict[str, Callable[[], hashlib._Hash]] = {
-        HashAlgorithmEnum.SHA256.value: hashlib.sha256,
-        HashAlgorithmEnum.SHA512.value: hashlib.sha512,
-    }
-
-    if hash_algorithm.lower() not in supported_algorithms:
+    if hash_algorithm.lower() not in _HASH_BUILDERS:
         raise ValueError(
-            f"不支持的哈希算法: {hash_algorithm}，支持的算法: {list(supported_algorithms.keys())}"
+            f"不支持的哈希算法: {hash_algorithm}，支持的算法: {list(_HASH_BUILDERS.keys())}"
         )
 
-    hash_func: hashlib._Hash = supported_algorithms[hash_algorithm.lower()]()
+    hash_func: hashlib._hashlib.HASH = _HASH_BUILDERS[hash_algorithm.lower()]()
 
-    with open(file_path, "rb") as f:
+    with file_path.open("rb") as f:
         for chunk in iter(lambda: f.read(4096), b""):
             hash_func.update(chunk)
 
@@ -42,15 +42,20 @@ def calculate_file_hash(
 def calculate_multiple_hashes(
     file_path: str | Path, algorithms: list[str] | None = None
 ) -> dict[str, str]:
-    """一次性计算文件的多种哈希值"""
+    """一次性计算文件的多种哈希值，只读取文件一次"""
+    file_path = Path(file_path)
+
     if algorithms is None:
         algorithms = [HashAlgorithmEnum.SHA256.value, HashAlgorithmEnum.SHA512.value]
 
-    results: dict[str, str] = {}
-    for algorithm in algorithms:
-        results[algorithm] = calculate_file_hash(file_path, algorithm)
+    hashers: list[hashlib._hashlib.HASH] = [_HASH_BUILDERS[alg.lower()]() for alg in algorithms]
 
-    return results
+    with file_path.open("rb") as f:
+        for chunk in iter(lambda: f.read(4096), b""):
+            for hasher in hashers:
+                hasher.update(chunk)
+
+    return {alg: hasher.hexdigest() for alg, hasher in zip(algorithms, hashers)}
 
 
 def verify_file_hash(
@@ -66,35 +71,13 @@ def verify_file_hash(
         return False
 
 
-def download_and_verify(
-    url: str,
-    destination: str | Path,
-    expected_hash: str,
+def format_checksum_for_pkgbuild(
+    checksum: str,
+    arch: str | None = None,
     hash_algorithm: str = HashAlgorithmEnum.SHA512.value,
-) -> bool:
-    """下载文件并验证哈希值，失败时自动清理"""
-    import httpx
-
-    destination = Path(destination)
-    destination.parent.mkdir(parents=True, exist_ok=True)
-
-    try:
-        with httpx.stream("GET", url) as response:
-            response.raise_for_status()
-            with open(destination, "wb") as f:
-                for chunk in response.iter_bytes():
-                    f.write(chunk)
-
-        return verify_file_hash(destination, expected_hash, hash_algorithm)
-    except Exception:
-        if destination.exists():
-            destination.unlink()
-        return False
-
-
-def format_checksum_for_pkgbuild(checksum: str, arch: str | None = None) -> str:
+) -> str:
     """格式化校验和为 PKGBUILD 语法"""
+    algo_name = hash_algorithm.lower()
     if arch:
-        return f"{HashAlgorithmEnum.SHA512.value}sums_{arch}=('{checksum}')"
-    else:
-        return f"{HashAlgorithmEnum.SHA512.value}sums=('{checksum}')"
+        return f"{algo_name}sums_{arch}=('{checksum}')"
+    return f"{algo_name}sums=('{checksum}')"

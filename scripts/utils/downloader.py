@@ -99,7 +99,10 @@ class Downloader:
                 )
 
             except Exception as e:
+                print(f"下载失败 (尝试 {attempt + 1}/{self.max_retries + 1}): {e}")
                 if attempt == self.max_retries:
+                    if file_path.exists():
+                        file_path.unlink()
                     return DownloadResult(
                         arch=arch,
                         success=False,
@@ -162,7 +165,10 @@ class Downloader:
                 )
 
             except Exception as e:
+                print(f"下载失败 (尝试 {attempt + 1}/{self.max_retries + 1}): {e}")
                 if attempt == self.max_retries:
+                    if file_path.exists():
+                        file_path.unlink()
                     return DownloadResult(
                         arch=arch,
                         success=False,

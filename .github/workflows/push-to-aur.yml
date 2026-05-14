@@ -24,8 +24,8 @@ jobs:
     name: Setup matrix
     runs-on: ubuntu-latest
     if: |
-      (github.event_name == 'workflow_run' && github.event.workflow_run.conclusion == 'success') ||
-      github.event_name == 'workflow_dispatch'
+      github.event_name == 'workflow_dispatch' ||
+      (github.event_name == 'workflow_run' && github.event.workflow_run.conclusion == 'success')
 
     outputs:
       packages: ${{ steps.set_matrix.outputs.packages }}
@@ -42,15 +42,34 @@ jobs:
             # 用户指定了包列表，转换为 JSON 数组
             packages=$(echo "${{ github.event.inputs.packages }}" | tr ',' '\n' | jq -R . | jq -s -c .)
           else
-            # 获取所有包目录，转换为 JSON 数组
-            packages=$(ls -d packages/*/ | xargs -n1 basename | jq -R . | jq -s -c .)
+            # Only include packages whose PKGBUILD was changed in the latest commit
+            changed=false
+            UPDATED=()
+            for pkg_path in packages/*/; do
+              [ -d "$pkg_path" ] || continue
+              pkg_name=$(basename "$pkg_path")
+              if git diff --quiet HEAD~1 HEAD -- "$pkg_path/PKGBUILD" 2>/dev/null; then
+                :
+              else
+                UPDATED+=("$pkg_name")
+              fi
+            done
+            if [ ${#UPDATED[@]} -eq 0 ]; then
+              packages='[]'
+            else
+              packages=$(printf '%s\n' "${UPDATED[@]}" | jq -R . | jq -s -c .)
+            fi
           fi
 
           echo "packages=$packages" >> "$GITHUB_OUTPUT"
           echo "count=$(echo "$packages" | jq 'length')" >> "$GITHUB_OUTPUT"
 
-          echo "📦 将推送以下包:"
+          echo "Packages to push:"
           echo "$packages" | jq -r '.[]' | sed 's/^/   - /'
+
+          if [ "$packages" = "[]" ]; then
+            echo "No packages to push, skipping."
+          fi
 
   push-to-aur:
     name: Push ${{ matrix.package }}
@@ -61,6 +80,7 @@ jobs:
       matrix:
         package: ${{ fromJson(needs.setup.outputs.packages) }}
       fail-fast: false
+    if: needs.setup.outputs.count != '0'
 
     steps:
       - name: Checkout repository
