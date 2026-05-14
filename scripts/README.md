@@ -23,8 +23,9 @@ scripts/
 │   └── config_loader.py   # ConfigLoader类，加载YAML配置
 ├── parsers/                # 数据解析
 │   ├── __init__.py
-│   ├── base.py            # Parser基类
-│   └── qq.py              # QQParser类，解析QQ版本信息
+│   ├── base_parser.py     # Parser基类
+│   ├── qq.py              # QQParser类，解析QQ版本信息
+│   └── navicat.py         # NavicatPremiumCSParser类
 ├── updater/                # 文件更新
 │   ├── __init__.py
 │   └── pkgbuild_editor.py # PKGBUILDEditor类，更新PKGBUILD文件
@@ -75,19 +76,19 @@ scripts/
 ### 更新所有包
 
 ```bash
-python main.py --all
+uv run main.py --all
 ```
 
 ### 更新指定包
 
 ```bash
-python main.py --package qq
+uv run main.py --package qq
 ```
 
 ### 列出所有可用包
 
 ```bash
-python main.py --list
+uv run main.py --list
 ```
 
 ## 依赖
@@ -116,7 +117,7 @@ python main.py --list
 
 1. 在`packages.yaml`中添加配置
 2. 在`parsers`目录中创建相应的解析器类
-3. 确保解析器实现了`parse_version`和`parse_deb_url`方法
+3. 确保解析器实现了`parse_version`和`parse_url`方法
 
 ## 支持的架构
 

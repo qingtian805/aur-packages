@@ -18,7 +18,7 @@
 
 ```bash
 # 克隆项目
-git clone https://github.com/yourusername/aur-packages.git
+git clone https://github.com/awsl1414/aur-packages.git
 cd aur-packages/scripts
 
 # 安装依赖
@@ -107,3 +107,7 @@ uv sync
 ## 📄 许可证
 
 MIT License
+
+## 🙏 贡献者
+
+见 [CONTRIBUTORS](CONTRIBUTORS) 文件。

@@ -87,6 +87,11 @@
 
 ```
 aur-packages/
+├── .github/workflows/              # ⚙️ GitHub Actions
+│   ├── keep-alive.yml              # 保持仓库活跃
+│   ├── push-to-aur.yml             # 推送到 AUR
+│   └── update-packages.yml         # 自动更新包
+│
 ├── docs/                           # 📚 项目文档
 │   ├── README.md                   # 文档索引（本文件）
 │   ├── 01-quickstart.md            # 快速入门
@@ -113,6 +118,7 @@ aur-packages/
 │   ├── linuxqq-nt/                 # QQ Linux 包
 │   └── navicat17-premium-zh-cn/    # Navicat 包
 │
+├── CONTRIBUTORS                    # 贡献者名单
 ├── CLAUDE.md                       # Claude Code 项目指引
 └── README.md                       # 项目说明
 ```

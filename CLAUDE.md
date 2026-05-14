@@ -72,6 +72,11 @@ packages/                         # AUR 包目录
 │   └── PKGBUILD                  # PKGBUILD 文件
 └── navicat17-premium-zh-cn/      # Navicat 包
     └── PKGBUILD                  # PKGBUILD 文件
+
+.github/workflows/                # CI/CD 工作流
+├── keep-alive.yml                # 每月启用所有 workflow，防止 GitHub 自动停用
+├── push-to-aur.yml               # 推送 PKGBUILD 到 AUR
+└── update-packages.yml           # 定时检测并更新包版本
 ```
 
 ### 关键类和接口

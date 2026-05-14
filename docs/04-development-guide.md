@@ -27,7 +27,7 @@
 #### 1. 克隆项目
 
 ```bash
-git clone https://github.com/yourusername/aur-packages.git
+git clone https://github.com/awsl1414/aur-packages.git
 cd aur-packages
 ```
 

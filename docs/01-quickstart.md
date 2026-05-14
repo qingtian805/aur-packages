@@ -69,7 +69,7 @@ pip install uv
 #### 2. 克隆项目
 
 ```bash
-git clone https://github.com/yourusername/aur-packages.git
+git clone https://github.com/awsl1414/aur-packages.git
 cd aur-packages
 ```
 
@@ -85,7 +85,7 @@ uv sync
 #### 1. 克隆项目
 
 ```bash
-git clone https://github.com/yourusername/aur-packages.git
+git clone https://github.com/awsl1414/aur-packages.git
 cd aur-packages/scripts
 ```
 
@@ -329,7 +329,7 @@ uv run main.py --list
 
 4. **重新测试**
    ```bash
-   python main.py --package qq
+   uv run main.py --package qq
    ```
 
 ### 场景 4: 批量更新多个包
@@ -340,7 +340,7 @@ uv run main.py --list
 
 1. **一次性更新所有包**
    ```bash
-   python main.py
+   uv run main.py
    ```
 
 2. **查看更新摘要**
