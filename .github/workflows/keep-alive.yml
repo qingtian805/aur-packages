@@ -1,0 +1,35 @@
+name: Keep Repository Alive
+
+on:
+  schedule:
+    - cron: '0 0 1 * *'
+  workflow_dispatch:
+permissions:
+  actions: write
+jobs:
+  alive:
+    runs-on: ubuntu-latest
+    steps:
+      - shell: bash
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+
+          REPO="${{ github.repository }}"
+          echo "Fetching workflows for ${REPO}..."
+
+          workflow_ids=$(gh api "repos/${REPO}/actions/workflows" --jq '.workflows[] | select(.name != "Keep Repository Alive") | .id')
+          if [ -z "$workflow_ids" ]; then
+            echo "::error::No workflows found or API call failed"
+            exit 1
+          fi
+
+          echo "Found workflows:"
+          echo "$workflow_ids" | while read -r id; do
+            echo "Enabling workflow ID: ${id}"
+            if ! gh api -X PUT "repos/${REPO}/actions/workflows/${id}/enable"; then
+              echo "::error::Failed to enable workflow ID: ${id}"
+              exit 1
+            fi
+          done
