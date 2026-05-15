@@ -99,21 +99,22 @@ class Downloader:
                 )
 
             except Exception as e:
-                print(f"下载失败 (尝试 {attempt + 1}/{self.max_retries + 1}): {e}")
+                error_msg = f"{type(e).__name__}: {e}" if str(e) else type(e).__name__
+                print(f"  [{arch}] 下载失败 (尝试 {attempt + 1}/{self.max_retries + 1}): {url} -> {error_msg}")
                 if attempt == self.max_retries:
                     if file_path.exists():
                         file_path.unlink()
                     return DownloadResult(
                         arch=arch,
                         success=False,
-                        error=str(e),
+                        error=f"{url} -> {error_msg}",
                         retry_count=attempt,
                     )
 
         return DownloadResult(
             arch=arch,
             success=False,
-            error="Max retries exceeded",
+            error=f"{url} -> Max retries exceeded",
             retry_count=self.max_retries,
         )
 
@@ -165,21 +166,22 @@ class Downloader:
                 )
 
             except Exception as e:
-                print(f"下载失败 (尝试 {attempt + 1}/{self.max_retries + 1}): {e}")
+                error_msg = f"{type(e).__name__}: {e}" if str(e) else type(e).__name__
+                print(f"  [{arch}] 下载失败 (尝试 {attempt + 1}/{self.max_retries + 1}): {url} -> {error_msg}")
                 if attempt == self.max_retries:
                     if file_path.exists():
                         file_path.unlink()
                     return DownloadResult(
                         arch=arch,
                         success=False,
-                        error=str(e),
+                        error=f"{url} -> {error_msg}",
                         retry_count=attempt,
                     )
 
         return DownloadResult(
             arch=arch,
             success=False,
-            error="Max retries exceeded",
+            error=f"{url} -> Max retries exceeded",
             retry_count=self.max_retries,
         )
 
