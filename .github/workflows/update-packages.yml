@@ -35,7 +35,7 @@ jobs:
 
       - name: Resolve cdn-go.cn via Chinese DNS
         run: |
-          CHINA_IP=$(dig @119.29.29.29 cdn-go.cn +subnet=119.29.29.0/24 +short | grep -E '^[0-9]' | head -1)
+          CHINA_IP=$(dig @119.29.29.29 cdn-go.cn +subnet=118.134.175.0/24 +short | grep -E '^[0-9]' | head -1)
           if [ -z "$CHINA_IP" ]; then
             echo "ERROR: Failed to resolve cdn-go.cn via Chinese DNS"
             exit 1
