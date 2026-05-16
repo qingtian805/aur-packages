@@ -26,6 +26,9 @@ class ParserEnum(Enum):
 
     QQ = "QQParser"
     NAVICAT_PREMIUM_CS = "NavicatPremiumCSParser"
+    TRAE = "TraeParser"
+    TRAE_SG = "TraeParser_SG"
+    TRAE_US = "TraeParser_US"
 
 
 # Navicat 下载 URL 映射

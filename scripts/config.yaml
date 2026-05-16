@@ -45,3 +45,45 @@ packages:
     arch:
       - x86_64
       - aarch64
+
+  trae:
+    name: trae
+    source: trae
+    source_url: "https://www.trae.cn/"
+    fetch_url: "https://icube-normal.trae.ai/icube/api/v1/native/version/trae/latest"
+    upstream: "ByteDance/Trae"
+    parser: TraeParser
+    pkgbuild: "packages/trae/PKGBUILD"
+    update_source_url: true
+    enable: true
+    arch:
+      - x86_64
+      - aarch64
+
+  trae-sg:
+    name: trae-sg
+    source: trae
+    source_url: "https://www.trae.cn/"
+    fetch_url: "https://icube-normal.trae.ai/icube/api/v1/native/version/trae/latest"
+    upstream: "ByteDance/Trae"
+    parser: TraeParser_SG
+    pkgbuild: "packages/trae-sg/PKGBUILD"
+    update_source_url: true
+    enable: true
+    arch:
+      - x86_64
+      - aarch64
+
+  trae-us:
+    name: trae-us
+    source: trae
+    source_url: "https://www.trae.cn/"
+    fetch_url: "https://icube-normal.trae.ai/icube/api/v1/native/version/trae/latest"
+    upstream: "ByteDance/Trae"
+    parser: TraeParser_US
+    pkgbuild: "packages/trae-us/PKGBUILD"
+    update_source_url: true
+    enable: true
+    arch:
+      - x86_64
+      - aarch64

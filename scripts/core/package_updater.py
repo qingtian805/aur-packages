@@ -13,8 +13,9 @@ from constants.constants import DOWNLOAD_DIR, ArchEnum, HashAlgorithmEnum, Parse
 from fetcher.fetcher import Fetcher
 from loaders.config_loader import ConfigLoader, PackageConfig
 from parsers.base_parser import BaseParser
-from parsers.qq import QQParser
 from parsers.navicat import NavicatPremiumCSParser
+from parsers.qq import QQParser
+from parsers.trae import TraeParser, TraeRegion
 from updater.pkgbuild_editor import PKGBUILDEditor
 from utils.downloader import Downloader
 from utils.url_utils import generate_download_filename
@@ -38,6 +39,9 @@ class PackageUpdater:
         self.parsers: dict[str, BaseParser] = {
             ParserEnum.QQ.value: QQParser(),
             ParserEnum.NAVICAT_PREMIUM_CS.value: NavicatPremiumCSParser(),
+            ParserEnum.TRAE.value: TraeParser(),
+            ParserEnum.TRAE_SG.value: TraeParser(region=TraeRegion.SG),
+            ParserEnum.TRAE_US.value: TraeParser(region=TraeRegion.US),
         }
 
         # 初始化下载器（使用配置的下载设置）
@@ -80,7 +84,9 @@ class PackageUpdater:
         full_path = self.pkgbuild_root / pkgbuild_relative_path
         return full_path
 
-    def _check_pkgbuild_exists(self, package_name: str, package_config: PackageConfig) -> bool:
+    def _check_pkgbuild_exists(
+        self, package_name: str, package_config: PackageConfig
+    ) -> bool:
         """
         检查 PKGBUILD 文件是否存在
 
@@ -394,7 +400,8 @@ class PackageUpdater:
 
         loop = asyncio.get_running_loop()
         return await loop.run_in_executor(
-            None, partial(calculate_file_hash, file_path, HashAlgorithmEnum.SHA512.value)
+            None,
+            partial(calculate_file_hash, file_path, HashAlgorithmEnum.SHA512.value),
         )
 
     async def update_all_packages(self) -> tuple[int, int]:
@@ -414,12 +421,12 @@ class PackageUpdater:
             if config.enable
         }
         disabled_packages = [
-            name
-            for name, config in self.config.packages.items()
-            if not config.enable
+            name for name, config in self.config.packages.items() if not config.enable
         ]
 
-        print(f"开始更新所有包（共 {len(enabled_packages)} 个启用，{len(disabled_packages)} 个禁用）...")
+        print(
+            f"开始更新所有包（共 {len(enabled_packages)} 个启用，{len(disabled_packages)} 个禁用）..."
+        )
 
         if disabled_packages:
             print(f"  已跳过禁用的包: {', '.join(disabled_packages)}")
@@ -435,7 +442,9 @@ class PackageUpdater:
                 valid_packages[package_name] = package_config
 
         if missing_pkgbuild_packages:
-            print(f"  已跳过 PKGBUILD 文件不存在的包: {', '.join(missing_pkgbuild_packages)}")
+            print(
+                f"  已跳过 PKGBUILD 文件不存在的包: {', '.join(missing_pkgbuild_packages)}"
+            )
 
         if not valid_packages:
             print("\n没有可更新的包")
@@ -480,9 +489,7 @@ class PackageUpdater:
         success_count, total_count = await self.update_packages([package_name])
         return success_count > 0 and total_count > 0
 
-    async def update_packages(
-        self, package_names: list[str]
-    ) -> tuple[int, int]:
+    async def update_packages(self, package_names: list[str]) -> tuple[int, int]:
         """
         更新指定的包列表
 
@@ -506,7 +513,9 @@ class PackageUpdater:
                 continue
 
             package_config = self.config.packages[package_name]
-            is_updatable, skip_reason = self._is_package_updatable(package_name, package_config)
+            is_updatable, skip_reason = self._is_package_updatable(
+                package_name, package_config
+            )
 
             if is_updatable:
                 valid_packages[package_name] = package_config

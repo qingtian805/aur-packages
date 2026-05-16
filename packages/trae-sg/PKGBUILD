@@ -1,0 +1,41 @@
+# Maintainer: logan_reed <liulingzhang.work@icloud.com>
+
+pkgname=trae-sg
+pkgver=2.3.25937
+pkgrel=1
+pkgdesc="Trae - AI-powered IDE by ByteDance (Singapore CDN)"
+arch=('x86_64' 'aarch64')
+url="https://www.trae.cn/"
+license=('custom')
+provides=('trae')
+conflicts=('trae' 'trae-us')
+depends=('nss' 'alsa-lib' 'gtk3' 'at-spi2-core' 'libsecret' 'libxkbfile')
+optdepends=('libappindicator-gtk3: System tray support')
+options=('!strip' '!debug')
+install=trae.install
+source=("trae.sh" "trae.desktop")
+source_x86_64=("https://lf-cdn.trae.ai/obj/trae-ai-sg/pkg/app/releases/stable/${pkgver}/linux/Trae-linux-x64.tar.gz")
+source_aarch64=("https://lf-cdn.trae.ai/obj/trae-ai-sg/pkg/app/releases/stable/${pkgver}/linux/Trae-linux-arm64.tar.gz")
+sha512sums=('SKIP' 'SKIP')
+sha512sums_x86_64=('SKIP')
+sha512sums_aarch64=('SKIP')
+
+package() {
+    install -d "${pkgdir}/opt/trae"
+    cp -r "${srcdir}/Trae-linux-x64/"* "${pkgdir}/opt/trae/" 2>/dev/null || \
+    cp -r "${srcdir}/Trae-linux-arm64/"* "${pkgdir}/opt/trae/" 2>/dev/null || true
+
+    # Launcher
+    install -Dm755 "${srcdir}/trae.sh" "${pkgdir}/usr/bin/trae"
+
+    # Desktop entry
+    install -Dm644 "${srcdir}/trae.desktop" "${pkgdir}/usr/share/applications/trae.desktop"
+
+    # Icon
+    install -Dm644 "${pkgdir}/opt/trae/resources/app/resources/linux/code.png" "${pkgdir}/usr/share/pixmaps/trae.png"
+
+    # License
+    install -Dm644 "${pkgdir}/opt/trae/resources/app/LICENSE.txt" "${pkgdir}/usr/share/licenses/${pkgname}/LICENSE"
+    install -Dm644 "${pkgdir}/opt/trae/resources/app/ThirdPartyNotices.txt" "${pkgdir}/usr/share/licenses/${pkgname}/ThirdPartyNotices"
+    install -Dm644 "${pkgdir}/opt/trae/LICENSES.chromium.html" "${pkgdir}/usr/share/licenses/${pkgname}/LICENSES.chromium.html"
+}
