@@ -42,11 +42,10 @@ class PackageUpdater:
 
         # 初始化下载器（使用配置的下载设置）
         self.downloader = Downloader(
-            client=self.fetcher.client,
-            max_concurrent=download_settings.max_concurrent,
             max_retries=download_settings.max_retries,
-            base_delay=download_settings.base_delay,
-            chunk_size=download_settings.chunk_size,
+            retry_wait=download_settings.retry_wait,
+            timeout=download_settings.timeout,
+            connections=download_settings.connections,
             show_progress=download_settings.show_progress,
         )
 
@@ -57,7 +56,7 @@ class PackageUpdater:
         self.pkgbuild_root = self.project_root.parent
 
     async def close(self) -> None:
-        """关闭 httpx AsyncClient，释放资源"""
+        """释放资源"""
         await self.fetcher.client.aclose()
 
     def _get_pkgbuild_path(self, pkgbuild_relative_path: str) -> Path:

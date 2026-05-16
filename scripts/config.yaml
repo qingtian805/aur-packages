@@ -4,17 +4,15 @@
 settings:
   # 下载设置
   download:
-    # 单个包的多架构并行下载数量
-    max_concurrent: 3
     # 下载重试次数
     max_retries: 3
-    # 重试基础延迟（秒）
-    base_delay: 1.0
+    # 重试等待时间（秒）
+    retry_wait: 1
     # 下载超时时间（秒）
-    timeout: 30
-    # 下载块大小（字节）
-    chunk_size: 8192
-    # 是否显示进度条
+    timeout: 60
+    # 每个服务器的最大连接数
+    connections: 16
+    # 是否显示下载进度
     show_progress: true
 
 # 包配置

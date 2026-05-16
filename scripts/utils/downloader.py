@@ -1,22 +1,10 @@
-"""异步文件下载器模块"""
+"""基于 aria2c 的异步文件下载器模块"""
 
 import asyncio
-import time
-from collections.abc import Coroutine
+import shutil
+import tempfile
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any
-
-from httpx import AsyncClient
-from rich.progress import (
-    BarColumn,
-    DownloadColumn,
-    Progress,
-    TaskID,
-    TextColumn,
-    TimeRemainingColumn,
-    TransferSpeedColumn,
-)
 
 
 @dataclass(frozen=True)
@@ -27,39 +15,54 @@ class DownloadResult:
     success: bool
     file_path: Path | None = None
     error: str | None = None
-    retry_count: int = 0
-    download_time: float = 0.0
-    downloaded_size: int = 0
 
 
 class Downloader:
     """
-    现代化异步下载器
+    基于 aria2c 的异步下载器
 
     特性：
-    - 异步并发下载（asyncio + httpx）
-    - 智能重试（指数退避）
-    - 流式下载（内存高效）
-    - Rich 进度条（实时显示速度、进度、剩余时间）
+    - 多连接分片下载（aria2c -x/-s）
+    - 断点续传（aria2c -c）
+    - 内置重试与指数退避（aria2c --max-tries / --retry-wait）
+    - 单实例批量下载（--input-file），进度输出整洁
     """
 
     def __init__(
         self,
-        client: AsyncClient,
         *,
-        max_concurrent: int = 3,
         max_retries: int = 3,
-        base_delay: float = 1.0,
-        chunk_size: int = 8192,
+        retry_wait: int = 1,
+        timeout: int = 60,
+        connections: int = 16,
+        file_allocation: str = "none",
         show_progress: bool = True,
     ) -> None:
-        self.client = client
-        self.max_concurrent = max_concurrent
+        if not shutil.which("aria2c"):
+            raise FileNotFoundError("aria2c not found. Please install aria2 first.")
+
         self.max_retries = max_retries
-        self.base_delay = base_delay
-        self.chunk_size = chunk_size
+        self.retry_wait = retry_wait
+        self.timeout = timeout
+        self.connections = connections
+        self.file_allocation = file_allocation
         self.show_progress = show_progress
-        self._semaphore = asyncio.Semaphore(max_concurrent)
+
+    def _build_base_args(self) -> list[str]:
+        return [
+            "aria2c",
+            f"--max-tries={self.max_retries}",
+            f"--retry-wait={self.retry_wait}",
+            f"--timeout={self.timeout}",
+            f"--max-connection-per-server={self.connections}",
+            f"--split={self.connections}",
+            f"--file-allocation={self.file_allocation}",
+            "--allow-overwrite=true",
+            "--auto-file-renaming=false",
+            f"--console-log-level={'notice' if self.show_progress else 'error'}",
+            "--summary-interval=0",
+            "-c",
+        ]
 
     async def download_file(
         self,
@@ -68,121 +71,52 @@ class Downloader:
         *,
         arch: str = "unknown",
     ) -> DownloadResult:
-        """下载单个文件（支持智能重试）"""
-        for attempt in range(self.max_retries + 1):
-            try:
-                if attempt > 0:
-                    delay: float = self.base_delay * (2 ** (attempt - 1))
-                    await asyncio.sleep(delay)
+        """下载单个文件"""
+        file_path.parent.mkdir(parents=True, exist_ok=True)
 
-                start_time: float = time.perf_counter()
-                file_path.parent.mkdir(parents=True, exist_ok=True)
+        args = self._build_base_args() + [
+            "-d", str(file_path.parent),
+            "-o", file_path.name,
+            url,
+        ]
 
-                async with self._semaphore, self.client.stream("GET", url) as response:
-                    response.raise_for_status()
+        try:
+            pipe_output = not self.show_progress
+            proc = await asyncio.create_subprocess_exec(
+                *args,
+                stdout=asyncio.subprocess.PIPE if pipe_output else None,
+                stderr=asyncio.subprocess.PIPE if pipe_output else None,
+            )
+            stdout, stderr = await proc.communicate()
+        except Exception as e:
+            return DownloadResult(
+                arch=arch,
+                success=False,
+                error=f"{url} -> {type(e).__name__}: {e}",
+            )
 
-                    downloaded_size: int = 0
-                    with file_path.open("wb") as f:
-                        async for chunk in response.aiter_bytes(chunk_size=self.chunk_size):
-                            f.write(chunk)
-                            downloaded_size += len(chunk)
+        if proc.returncode == 0 and file_path.exists():
+            return DownloadResult(
+                arch=arch,
+                success=True,
+                file_path=file_path,
+            )
 
-                download_time: float = time.perf_counter() - start_time
+        if pipe_output:
+            error_detail = (stderr or stdout or b"").decode(errors="replace").strip()
+            if error_detail:
+                lines = error_detail.splitlines()
+                error_detail = lines[-1] if len(lines) == 1 else "\n".join(lines[-3:])
+        else:
+            error_detail = "see aria2c output above"
 
-                return DownloadResult(
-                    arch=arch,
-                    success=True,
-                    file_path=file_path,
-                    retry_count=attempt,
-                    download_time=download_time,
-                    downloaded_size=downloaded_size,
-                )
-
-            except Exception as e:
-                error_msg = f"{type(e).__name__}: {e}" if str(e) else type(e).__name__
-                print(f"  [{arch}] 下载失败 (尝试 {attempt + 1}/{self.max_retries + 1}): {url} -> {error_msg}")
-                if attempt == self.max_retries:
-                    if file_path.exists():
-                        file_path.unlink()
-                    return DownloadResult(
-                        arch=arch,
-                        success=False,
-                        error=f"{url} -> {error_msg}",
-                        retry_count=attempt,
-                    )
-
-        return DownloadResult(
-            arch=arch,
-            success=False,
-            error=f"{url} -> Max retries exceeded",
-            retry_count=self.max_retries,
-        )
-
-    async def download_file_with_progress(
-        self,
-        url: str,
-        file_path: Path,
-        progress: Progress,
-        task_id: TaskID,
-        *,
-        arch: str = "unknown",
-    ) -> DownloadResult:
-        """下载单个文件（带实时进度更新）"""
-        for attempt in range(self.max_retries + 1):
-            try:
-                if attempt > 0:
-                    delay: float = self.base_delay * (2 ** (attempt - 1))
-                    await asyncio.sleep(delay)
-
-                start_time: float = time.perf_counter()
-                file_path.parent.mkdir(parents=True, exist_ok=True)
-
-                async with self._semaphore, self.client.stream("GET", url) as response:
-                    response.raise_for_status()
-
-                    content_length: str | None = response.headers.get("content-length")
-                    total_size: int | None = int(content_length) if content_length else None
-
-                    if total_size:
-                        progress.update(task_id, total=total_size)
-                        progress.start_task(task_id)
-
-                    downloaded_size: int = 0
-                    with file_path.open("wb") as f:
-                        async for chunk in response.aiter_bytes(chunk_size=self.chunk_size):
-                            f.write(chunk)
-                            downloaded_size += len(chunk)
-                            progress.update(task_id, advance=len(chunk), refresh=True)
-
-                download_time: float = time.perf_counter() - start_time
-
-                return DownloadResult(
-                    arch=arch,
-                    success=True,
-                    file_path=file_path,
-                    retry_count=attempt,
-                    download_time=download_time,
-                    downloaded_size=downloaded_size,
-                )
-
-            except Exception as e:
-                error_msg = f"{type(e).__name__}: {e}" if str(e) else type(e).__name__
-                print(f"  [{arch}] 下载失败 (尝试 {attempt + 1}/{self.max_retries + 1}): {url} -> {error_msg}")
-                if attempt == self.max_retries:
-                    if file_path.exists():
-                        file_path.unlink()
-                    return DownloadResult(
-                        arch=arch,
-                        success=False,
-                        error=f"{url} -> {error_msg}",
-                        retry_count=attempt,
-                    )
+        if file_path.exists():
+            file_path.unlink()
 
         return DownloadResult(
             arch=arch,
             success=False,
-            error=f"{url} -> Max retries exceeded",
-            retry_count=self.max_retries,
+            error=f"{url} -> aria2c exited with code {proc.returncode}: {error_detail}",
         )
 
     async def download_all(
@@ -191,11 +125,11 @@ class Downloader:
         package_name: str = "package",
     ) -> dict[str, DownloadResult]:
         """
-        并行下载多个文件（带进度条）
+        使用单个 aria2c 实例批量下载多个文件
 
         Args:
             downloads: {arch: (url, file_path)} 字典
-            package_name: 包名称（用于进度条标题）
+            package_name: 包名称（用于日志标识）
 
         Returns:
             {arch: DownloadResult} 字典
@@ -203,49 +137,47 @@ class Downloader:
         if not downloads:
             return {}
 
-        results: dict[str, DownloadResult] = {}
+        for _arch, (url, file_path) in downloads.items():
+            file_path.parent.mkdir(parents=True, exist_ok=True)
 
-        if not self.show_progress:
-            tasks: list[Coroutine[Any, Any, DownloadResult]] = [
-                self.download_file(url, file_path, arch=arch)
-                for arch, (url, file_path) in downloads.items()
-            ]
-            completed_results: list[DownloadResult] = await asyncio.gather(*tasks)
+        # 写入 aria2c input file
+        with tempfile.NamedTemporaryFile(
+            mode="w", suffix=".txt", delete=False
+        ) as f:
+            for _arch, (url, file_path) in downloads.items():
+                f.write(f"{url}\n")
+                f.write(f"  dir={file_path.parent}\n")
+                f.write(f"  out={file_path.name}\n\n")
+            input_file = f.name
 
-            for arch, result in zip(downloads.keys(), completed_results):
-                results[arch] = result
+        try:
+            args = self._build_base_args() + [f"--input-file={input_file}"]
+
+            pipe_output = not self.show_progress
+            proc = await asyncio.create_subprocess_exec(
+                *args,
+                stdout=asyncio.subprocess.PIPE if pipe_output else None,
+                stderr=asyncio.subprocess.PIPE if pipe_output else None,
+            )
+            stdout, stderr = await proc.communicate()
+
+            results: dict[str, DownloadResult] = {}
+            for arch, (url, file_path) in downloads.items():
+                if file_path.exists():
+                    results[arch] = DownloadResult(
+                        arch=arch, success=True, file_path=file_path,
+                    )
+                else:
+                    # 清理 .aria2 控制文件
+                    control_file = Path(f"{file_path}.aria2")
+                    if control_file.exists():
+                        control_file.unlink()
+
+                    results[arch] = DownloadResult(
+                        arch=arch, success=False, error=f"{url} -> download failed",
+                    )
 
             return results
 
-        progress: Progress = Progress(
-            TextColumn("[bold blue]{task.description}", justify="right"),
-            BarColumn(bar_width=None),
-            "[progress.percentage]{task.percentage:>3.1f}%",
-            "•",
-            DownloadColumn(),
-            "•",
-            TransferSpeedColumn(),
-            "•",
-            TimeRemainingColumn(),
-            refresh_per_second=10,
-        )
-
-        with progress:
-            tasks: list[Coroutine[Any, Any, DownloadResult]] = []
-            for arch, (url, file_path) in downloads.items():
-                task_id: TaskID = progress.add_task(
-                    f"[{package_name}] {arch}",
-                    total=None,
-                )
-                tasks.append(
-                    self.download_file_with_progress(
-                        url, file_path, progress, task_id, arch=arch
-                    )
-                )
-
-            completed_results: list[DownloadResult] = await asyncio.gather(*tasks)
-
-            for arch, result in zip(downloads.keys(), completed_results):
-                results[arch] = result
-
-        return results
+        finally:
+            Path(input_file).unlink(missing_ok=True)

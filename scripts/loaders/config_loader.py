@@ -9,11 +9,10 @@ from constants.constants import ArchEnum
 class DownloadSettings(BaseModel):
     """下载配置"""
 
-    max_concurrent: int = 3
     max_retries: int = 3
-    base_delay: float = 1.0
-    timeout: int = 30
-    chunk_size: int = 8192
+    retry_wait: int = 1
+    timeout: int = 60
+    connections: int = 16
     show_progress: bool = True
 
     class Config:
