@@ -104,7 +104,7 @@ jobs:
           path: packages/
 
       - name: Generate .SRCINFO
-        uses: heyhusen/archlinux-package-action@v3.0.0
+        uses: awsl1414/archlinux-package-action@main
         with:
           path: packages/${{ matrix.package }}
           flags: ''
