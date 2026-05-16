@@ -2,7 +2,7 @@ name: Keep Repository Alive
 
 on:
   schedule:
-    - cron: '0 0 1 * *'
+    - cron: '23 16 1 * *'
   workflow_dispatch:
 permissions:
   actions: write
