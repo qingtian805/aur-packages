@@ -2,7 +2,7 @@
 Name=Trae
 Comment=AI-powered IDE by ByteDance
 GenericName=Text Editor
-Exec=/usr/bin/trae --no-sandbox %F
+Exec=/usr/bin/trae %F
 Icon=trae
 Type=Application
 StartupNotify=true

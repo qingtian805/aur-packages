@@ -25,6 +25,9 @@ package() {
     cp -r "${srcdir}/Trae-linux-x64/"* "${pkgdir}/opt/trae/" 2>/dev/null || \
     cp -r "${srcdir}/Trae-linux-arm64/"* "${pkgdir}/opt/trae/" 2>/dev/null || true
 
+    # SUID sandbox
+    chmod 4755 "${pkgdir}/opt/trae/chrome-sandbox"
+
     # Launcher
     install -Dm755 "${srcdir}/trae.sh" "${pkgdir}/usr/bin/trae"
 
