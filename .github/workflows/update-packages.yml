@@ -31,7 +31,18 @@ jobs:
       - name: Install aria2
         run: |
           sudo apt-get update
-          sudo apt-get install -y aria2
+          sudo apt-get install -y aria2 dnsutils
+
+      - name: Resolve cdn-go.cn via Chinese DNS
+        run: |
+          CHINA_IP=$(dig @119.29.29.29 cdn-go.cn +short | grep -E '^[0-9]' | head -1)
+          if [ -z "$CHINA_IP" ]; then
+            echo "ERROR: Failed to resolve cdn-go.cn via Chinese DNS"
+            exit 1
+          fi
+          echo "$CHINA_IP cdn-go.cn" | sudo tee -a /etc/hosts
+          echo "Resolved cdn-go.cn -> $CHINA_IP"
+          getent ahosts cdn-go.cn
 
       - name: Install uv
         uses: astral-sh/setup-uv@v8.1.0
