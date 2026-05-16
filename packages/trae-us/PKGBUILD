@@ -1,7 +1,7 @@
 # Maintainer: logan_reed <liulingzhang.work@icloud.com>
 
 pkgname=trae-us
-pkgver=2.3.25937
+pkgver=2.3.25938
 pkgrel=1
 pkgdesc="Trae - AI-powered IDE by ByteDance (US CDN)"
 arch=('x86_64' 'aarch64')
@@ -14,11 +14,11 @@ optdepends=('libappindicator-gtk3: System tray support')
 options=('!strip' '!debug')
 install=trae.install
 source=("trae.sh" "trae.desktop")
-source_x86_64=("https://lf-cdn.trae.ai/obj/trae-ai-us/pkg/app/releases/stable/${pkgver}/linux/Trae-linux-x64.tar.gz")
-source_aarch64=("https://lf-cdn.trae.ai/obj/trae-ai-us/pkg/app/releases/stable/${pkgver}/linux/Trae-linux-arm64.tar.gz")
+source_x86_64=('https://lf-cdn.trae.ai/obj/trae-ai-us/pkg/app/releases/stable/2.3.25938/linux/Trae-linux-x64.tar.gz')
+source_aarch64=('https://lf-cdn.trae.ai/obj/trae-ai-us/pkg/app/releases/stable/2.3.25938/linux/Trae-linux-arm64.tar.gz')
 sha512sums=('SKIP' 'SKIP')
-sha512sums_x86_64=('SKIP')
-sha512sums_aarch64=('SKIP')
+sha512sums_x86_64=('6443c8ad9fac60c1c43581fed7431a63c45bbb49325feaa8c0405cf29117d82bd2dae460e09d739884556917577209973ba3bcb32f37e36ec8f27aeb783c31e0')
+sha512sums_aarch64=('86543ed2425beb6dc29fe6f99d1a6efe7028a6f86c88a3ffd8ccbb7baff5240543a5125fa40fe2a3512cc3b07145176a895c36a0977faff005c1df390a4c8d42')
 
 package() {
     install -d "${pkgdir}/opt/trae"
