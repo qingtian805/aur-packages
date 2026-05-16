@@ -6,7 +6,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 这是一个 Arch Linux AUR 包自动更新工具，用于从上游获取最新版本并更新 PKGBUILD 文件。项目使用 Python 3.13+ 开发，采用模块化架构。
 
-**相关文档**：[README.md](README.md)（项目入口）、[scripts/README.md](scripts/README.md)（模块说明）
+**相关文档**：[README.md](README.md)（项目入口）、[scripts/README.md](scripts/README.md)（模块说明）、[docs/packaging-guide.md](docs/packaging-guide.md)（AUR 打包规范）
 
 ## 开发命令
 
@@ -311,6 +311,7 @@ ci: add test workflow for QQ version parsing
 
 ## 注意事项
 
+- **编辑或创建 PKGBUILD 时必须遵守 [docs/packaging-guide.md](docs/packaging-guide.md) 中的规范**
 - **项目严格使用类型注解**，所有函数必须包含完整的参数和返回类型注解
 - **项目使用 uv 统一管理运行环境，禁止显式使用 `python` 命令**
 - 项目使用绝对导入（`from cli.cli import update_main`），而不是相对导入
