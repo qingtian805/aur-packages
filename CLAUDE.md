@@ -6,6 +6,8 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 这是一个 Arch Linux AUR 包自动更新工具，用于从上游获取最新版本并更新 PKGBUILD 文件。项目使用 Python 3.13+ 开发，采用模块化架构。
 
+**相关文档**：[README.md](README.md)（项目入口）、[scripts/README.md](scripts/README.md)（模块说明）
+
 ## 开发命令
 
 ```bash
@@ -39,7 +41,7 @@ uv remove <package>               # 移除依赖
 
 1. **Fetch** (`fetcher/`): 从网络获取版本信息
 2. **Parse** (`parsers/`): 解析数据，提取版本号和下载链接
-3. **Update** (`updater/`): 更新 PKGBUILD 文件
+3. **Update** (`updater/`): 下载文件并更新 PKGBUILD 文件
 
 ### 目录结构
 
@@ -52,9 +54,9 @@ scripts/                          # 主要代码目录
 ├── constants/
 │   └── constants.py              # 枚举类：ArchEnum、HashAlgorithmEnum、ParserEnum
 ├── fetcher/
-│   └── fetcher.py                # Fetcher 类，HTTP 客户端封装
+│   └── fetcher.py                # Fetcher 类，HTTP 客户端封装（httpx）
 ├── loaders/
-│   └── config_loader.py          # ConfigLoader，加载 packages.yaml 配置
+│   └── config_loader.py          # ConfigLoader，加载 config.yaml 配置
 ├── parsers/
 │   ├── base_parser.py            # BaseParser 抽象基类
 │   ├── qq.py                     # QQParser 实现
@@ -62,9 +64,12 @@ scripts/                          # 主要代码目录
 ├── updater/
 │   └── pkgbuild_editor.py        # PKGBUILDEditor，编辑 PKGBUILD 文件
 ├── utils/
-│   └── hash.py                   # 哈希计算工具函数
+│   ├── downloader.py             # aria2c 异步下载器（多连接、断点续传）
+│   ├── hash.py                   # 哈希计算工具函数
+│   ├── url_utils.py              # URL 和文件名工具函数
+│   └── version_utils.py          # 版本比较工具函数
 ├── tests/                        # pytest 测试目录
-├── packages.yaml                 # 包配置文件（核心配置）
+├── config.yaml                   # 全局配置文件（下载设置、包配置）
 └── main.py                       # 程序入口
 
 packages/                         # AUR 包目录
@@ -93,6 +98,11 @@ packages/                         # AUR 包目录
 - `pkgbuild_root` 指向项目根目录（用于定位 PKGBUILD 文件）
 - 维护 `parsers` 字典，映射 `ParserEnum` 到解析器实例
 
+**Downloader** (`utils/downloader.py`)
+- 基于 aria2c 的异步下载器，使用 `asyncio.create_subprocess_exec` 调用 aria2c
+- 多连接分片下载（`-x`/`-s`）、断点续传（`-c`）、内置重试
+- `download_all()` 使用单个 aria2c 实例批量下载（`--input-file`）
+
 **PKGBUILDEditor** (`updater/pkgbuild_editor.py`)
 - 使用正则表达式编辑 PKGBUILD 文件
 - 支持更新 `pkgver`、`pkgrel`、`source_<arch>`、`sha512sums_<arch>` 等字段
@@ -100,8 +110,16 @@ packages/                         # AUR 包目录
 
 ### 配置文件结构
 
-**packages.yaml** 示例：
+**config.yaml** 示例：
 ```yaml
+settings:
+  download:
+    max_retries: 3
+    retry_wait: 1
+    timeout: 60
+    connections: 16
+    show_progress: true
+
 packages:
   qq:
     name: qq                                    # 包名
@@ -111,6 +129,7 @@ packages:
     parser: QQParser                            # 解析器名称（必须匹配 ParserEnum）
     pkgbuild: "packages/linuxqq-nt/PKGBUILD"    # PKGBUILD 相对路径
     update_source_url: true                     # 是否更新 source URL
+    enable: true                                # 是否启用自动更新
     arch:                                       # 支持的架构列表
       - x86_64
       - aarch64
@@ -130,7 +149,7 @@ packages:
 
 ## 添加新软件包
 
-1. 在 `packages.yaml` 中添加包配置
+1. 在 `config.yaml` 中添加包配置
 2. 在 `parsers/` 中创建新的解析器类，继承 `BaseParser`
 3. 在 `constants/constants.py` 的 `ParserEnum` 中添加解析器名称
 4. 在 `core/package_updater.py` 的 `PackageUpdater.__init__()` 中注册解析器实例
@@ -257,6 +276,7 @@ uv add --dev types-requests types-pyyaml
 - **项目使用 uv 统一管理运行环境，禁止显式使用 `python` 命令**
 - 项目使用绝对导入（`from cli.cli import update_main`），而不是相对导入
 - Python 版本要求 >= 3.13
+- **下载器依赖 aria2c**，运行前需确保系统已安装 aria2（`sudo apt install aria2` 或 `sudo pacman -S aria2`）
 - PKGBUILD 文件路径相对于项目根目录（`aur-packages/`），而非 `scripts/` 目录
 - 下载的文件默认保存在 `scripts/downloads/` 目录
 - 支持多架构包，每个架构独立计算校验和
