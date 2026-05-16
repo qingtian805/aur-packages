@@ -3,10 +3,11 @@
 整合fetch、parse和update三个流程
 
 架构设计：
-1. 串行下载所有维护的 AUR 包（一个包处理完后才处理下一个）
+1. 并行更新所有维护的 AUR 包（使用 asyncio.gather）
 2. 并行下载单个包的所有架构（使用 Downloader 的并发功能）
 """
 
+import asyncio
 from pathlib import Path
 
 from constants.constants import DOWNLOAD_DIR, ArchEnum, HashAlgorithmEnum, ParserEnum
@@ -39,7 +40,9 @@ class PackageUpdater:
         navicat_urls = self.config.packages["navicat"].urls
         self.parsers: dict[str, BaseParser] = {
             ParserEnum.QQ.value: QQParser(),
-            ParserEnum.NAVICAT_PREMIUM_CS.value: NavicatPremiumCSParser(urls=navicat_urls),
+            ParserEnum.NAVICAT_PREMIUM_CS.value: NavicatPremiumCSParser(
+                urls=navicat_urls
+            ),
             ParserEnum.TRAE.value: TraeParser(),
             ParserEnum.TRAE_SG.value: TraeParser(region=TraeRegion.SG),
             ParserEnum.TRAE_US.value: TraeParser(region=TraeRegion.US),
@@ -394,7 +397,6 @@ class PackageUpdater:
 
     async def _calculate_checksum(self, file_path: Path) -> str:
         """计算文件的 SHA512 校验和"""
-        import asyncio
         from functools import partial
 
         from utils.hash import calculate_file_hash
@@ -407,10 +409,9 @@ class PackageUpdater:
 
     async def update_all_packages(self) -> tuple[int, int]:
         """
-        更新所有配置的包
+        并行更新所有配置的包
 
-        串行处理所有包（一个包处理完后才处理下一个）
-        每个包的多个架构并行下载（通过 Downloader 实现）
+        所有包同时进入更新流程，每个包的多个架构并行下载
 
         Returns:
             (成功数量, 总数量)
@@ -451,14 +452,12 @@ class PackageUpdater:
             print("\n没有可更新的包")
             return 0, 0
 
-        success_count = 0
         total_count = len(valid_packages)
-
-        for package_name, package_config in valid_packages.items():
-            print()
-            success = await self.update_package(package_name, package_config)
-            if success:
-                success_count += 1
+        tasks = [
+            self.update_package(name, config) for name, config in valid_packages.items()
+        ]
+        results = await asyncio.gather(*tasks)
+        success_count = sum(1 for r in results if r)
 
         print()
         print(f"更新完成: {success_count}/{total_count} 个包更新成功")
@@ -533,16 +532,15 @@ class PackageUpdater:
         if not valid_packages:
             return 0, 0
 
-        # 更新包
+        # 并行更新包
         print(f"开始更新 {len(valid_packages)} 个包...")
 
-        success_count = 0
         total_count = len(valid_packages)
-
-        for package_name, package_config in valid_packages.items():
-            print()
-            if await self.update_package(package_name, package_config):
-                success_count += 1
+        tasks = [
+            self.update_package(name, config) for name, config in valid_packages.items()
+        ]
+        results = await asyncio.gather(*tasks)
+        success_count = sum(1 for r in results if r)
 
         print()
         print(f"更新完成: {success_count}/{total_count} 个包更新成功")

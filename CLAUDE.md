@@ -60,7 +60,8 @@ scripts/                          # 主要代码目录
 ├── parsers/
 │   ├── base_parser.py            # BaseParser 抽象基类
 │   ├── qq.py                     # QQParser 实现
-│   └── navicat.py                # NavicatPremiumCSParser 实现
+│   ├── navicat.py                # NavicatPremiumCSParser 实现
+│   └── trae.py                   # TraeParser 实现（支持地域参数）
 ├── updater/
 │   └── pkgbuild_editor.py        # PKGBUILDEditor，编辑 PKGBUILD 文件
 ├── utils/
@@ -75,8 +76,11 @@ scripts/                          # 主要代码目录
 packages/                         # AUR 包目录
 ├── linuxqq-nt/                   # QQ Linux 包
 │   └── PKGBUILD                  # PKGBUILD 文件
-└── navicat17-premium-zh-cn/      # Navicat 包
-    └── PKGBUILD                  # PKGBUILD 文件
+├── navicat17-premium-zh-cn/      # Navicat 包
+│   └── PKGBUILD                  # PKGBUILD 文件
+├── trae/                         # Trae IDE（CN CDN）
+├── trae-sg/                      # Trae IDE（SG CDN）
+└── trae-us/                      # Trae IDE（US CDN）
 
 .github/workflows/                # CI/CD 工作流
 ├── keep-alive.yml                # 每月启用所有 workflow，防止 GitHub 自动停用
@@ -134,6 +138,12 @@ packages:
       - x86_64
       - aarch64
       - loong64
+
+  navicat:
+    # ...同上...
+    urls:                                       # 固定下载链接（可选，不随版本变化）
+      x86_64: "https://...x86_64.AppImage"
+      aarch64: "https://...aarch64.AppImage"
 ```
 
 ### 枚举类型
