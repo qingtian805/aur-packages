@@ -40,6 +40,7 @@ class PackageConfig(BaseModel):
     arch: list[str] = Field(default_factory=list)
     update_source_url: bool = Field(default=True)
     enable: bool = Field(default=True)
+    urls: dict[str, str] = Field(default_factory=dict)
 
     class Config:
         extra = "ignore"

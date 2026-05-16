@@ -29,10 +29,3 @@ class ParserEnum(Enum):
     TRAE = "TraeParser"
     TRAE_SG = "TraeParser_SG"
     TRAE_US = "TraeParser_US"
-
-
-# Navicat 下载 URL 映射
-NAVICAT_URLS = {
-    ArchEnum.X86_64: "https://dn.navicat.com/download/navicat17-premium-cs-x86_64.AppImage",
-    ArchEnum.AARCH64: "https://dn.navicat.com/download/navicat17-premium-cs-aarch64.AppImage",
-}

@@ -3,12 +3,15 @@
 import re
 from typing import Any
 
-from constants.constants import ArchEnum, NAVICAT_URLS
+from constants.constants import ArchEnum
 from .base_parser import BaseParser
 
 
 class NavicatPremiumCSParser(BaseParser):
     """Navicat Premium CS 版本解析器"""
+
+    def __init__(self, urls: dict[str, str] | None = None) -> None:
+        self._urls = urls or {}
 
     def parse_version(self, response_data: str | Any) -> str | None:
         """从 Navicat 响应数据中提取版本号"""
@@ -19,13 +22,6 @@ class NavicatPremiumCSParser(BaseParser):
         return matched.group(2) if matched else None
 
     def parse_url(self, arch: ArchEnum | str, response_data: str | Any) -> str | None:
-        """从预定义映射中获取 Navicat 下载 URL"""
-        if not isinstance(response_data, str):
-            return None
-        match arch:
-            case ArchEnum.X86_64:
-                return NAVICAT_URLS[ArchEnum.X86_64]
-            case ArchEnum.AARCH64:
-                return NAVICAT_URLS[ArchEnum.AARCH64]
-            case _:
-                return None
+        """从配置注入的 URL 映射中获取下载链接"""
+        arch_value = arch.value if isinstance(arch, ArchEnum) else arch
+        return self._urls.get(arch_value)
