@@ -148,7 +148,7 @@ Icon=trae
 - `provides`：仅在包名与提供的虚拟包不同时声明；不要将 `pkgname` 加入，makepkg 自动处理
 - `provides` 应附带版本号（如 `provides=('trae=2.3.25938')`），以便依赖特定版本的包正确解析
 - `conflicts`：声明文件冲突或功能冲突的包
-- 通过 `provides` 提供相同功能的包互为隐式冲突，无需在 `conflicts` 中逐一列举所有变体
+- `conflicts` 会同时匹配其他包的 `pkgname` 和 `provides`，因此变体包只需 `conflicts` 主包名即可阻止所有提供相同功能的包共存
 
 ```bash
 # trae（主包，pkgname = trae，provides 自动包含）
@@ -156,8 +156,8 @@ conflicts=('trae-bin')
 
 # trae-sg（变体包）
 provides=('trae')
-conflicts=('trae-bin')
-# 无需 conflicts=('trae' 'trae-us')，三者均 provides=('trae')，隐式互斥
+conflicts=('trae' 'trae-bin')
+# conflicts 'trae' 同时阻止：主包 trae（pkgname 匹配）和 trae-us（provides 匹配）
 ```
 
 ---
