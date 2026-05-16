@@ -70,14 +70,24 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v6
 
+      - name: Generate .SRCINFO
+        uses: awsl1414/archlinux-package-action@main
+        with:
+          path: packages/${{ matrix.package }}
+          flags: ''
+          namcap: false
+          srcinfo: true
+
       - name: Detect package assets
         id: assets
         run: |
           assets=""
-          for file in packages/${{ matrix.package }}/*; do
+          for file in packages/${{ matrix.package }}/* packages/${{ matrix.package }}/.*; do
             basename=$(basename "$file")
             [ "$basename" = "PKGBUILD" ] && continue
             [ "$basename" = ".gitignore" ] && continue
+            [ "$basename" = "." ] && continue
+            [ "$basename" = ".." ] && continue
             [ -f "$file" ] || continue
             assets="${assets}${file}"$'\n'
           done
