@@ -48,7 +48,9 @@ def calculate_multiple_hashes(
     if algorithms is None:
         algorithms = [HashAlgorithmEnum.SHA256.value, HashAlgorithmEnum.SHA512.value]
 
-    hashers: list[hashlib._hashlib.HASH] = [_HASH_BUILDERS[alg.lower()]() for alg in algorithms]
+    hashers: list[hashlib._hashlib.HASH] = [
+        _HASH_BUILDERS[alg.lower()]() for alg in algorithms
+    ]
 
     with file_path.open("rb") as f:
         for chunk in iter(lambda: f.read(4096), b""):
