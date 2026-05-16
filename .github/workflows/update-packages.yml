@@ -183,6 +183,7 @@ jobs:
           for file in packages/${{ matrix.package }}/* packages/${{ matrix.package }}/.*; do
             basename=$(basename "$file")
             [ "$basename" = "PKGBUILD" ] && continue
+            [ "$basename" = ".SRCINFO" ] && continue
             [ "$basename" = ".gitignore" ] && continue
             [ "$basename" = "." ] && continue
             [ "$basename" = ".." ] && continue

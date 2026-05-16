@@ -9,9 +9,11 @@ on:
         default: ''
 
 permissions:
-  contents: read
+  contents: write
 
 env:
+  GIT_AUTHOR_NAME: "github-actions[bot]"
+  GIT_AUTHOR_EMAIL: "github-actions[bot]@users.noreply.github.com"
   AUR_USERNAME: "github-actions[bot]"
   AUR_EMAIL: "github-actions[bot]@users.noreply.github.com"
 
@@ -55,17 +57,15 @@ jobs:
             echo "No packages to push, skipping."
           fi
 
-  push-to-aur:
-    name: Push ${{ matrix.package }}
-    runs-on: ubuntu-latest
+  generate-srcinfo:
+    name: .SRCINFO (${{ matrix.package }})
     needs: setup
-
+    if: needs.setup.outputs.count != '0'
+    runs-on: ubuntu-latest
     strategy:
       matrix:
         package: ${{ fromJson(needs.setup.outputs.packages) }}
       fail-fast: false
-    if: needs.setup.outputs.count != '0'
-
     steps:
       - name: Checkout repository
         uses: actions/checkout@v6
@@ -78,6 +78,68 @@ jobs:
           namcap: false
           srcinfo: true
 
+      - name: Prepare .SRCINFO artifact
+        run: |
+          mkdir -p "tmp/artifact/${{ matrix.package }}"
+          cp "packages/${{ matrix.package }}/.SRCINFO" "tmp/artifact/${{ matrix.package }}/"
+
+      - name: Upload .SRCINFO
+        uses: actions/upload-artifact@v7
+        with:
+          name: srcinfo-${{ matrix.package }}
+          path: tmp/artifact/
+          include-hidden-files: true
+
+  commit:
+    name: Commit .SRCINFO
+    needs: generate-srcinfo
+    if: needs.setup.outputs.count != '0'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+
+      - name: Download .SRCINFO files
+        uses: actions/download-artifact@v8
+        with:
+          pattern: srcinfo-*
+          merge-multiple: true
+          path: packages/
+
+      - name: Commit and push
+        run: |
+          git config user.name "${{ env.GIT_AUTHOR_NAME }}"
+          git config user.email "${{ env.GIT_AUTHOR_EMAIL }}"
+          git config core.hooksPath .githooks
+
+          git add packages/
+
+          if git diff --cached --quiet; then
+            echo "No changes to commit"
+            exit 0
+          fi
+
+          git commit -m "chore: update .SRCINFO for manual AUR push" \
+                     -m "Co-Authored-By: github-actions[bot] <github-actions[bot]@users.noreply.github.com>"
+
+          git push origin "HEAD:${{ github.ref_name }}"
+
+  push-to-aur:
+    name: Push ${{ matrix.package }} to AUR
+    needs: [setup, commit]
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        package: ${{ fromJson(needs.setup.outputs.packages) }}
+      fail-fast: false
+    if: needs.setup.outputs.count != '0'
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+        with:
+          ref: ${{ github.ref_name }}
+
       - name: Detect package assets
         id: assets
         run: |
@@ -85,6 +147,7 @@ jobs:
           for file in packages/${{ matrix.package }}/* packages/${{ matrix.package }}/.*; do
             basename=$(basename "$file")
             [ "$basename" = "PKGBUILD" ] && continue
+            [ "$basename" = ".SRCINFO" ] && continue
             [ "$basename" = ".gitignore" ] && continue
             [ "$basename" = "." ] && continue
             [ "$basename" = ".." ] && continue

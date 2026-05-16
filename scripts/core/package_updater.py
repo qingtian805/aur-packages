@@ -456,14 +456,8 @@ class PackageUpdater:
         tasks = [
             self.update_package(name, config) for name, config in valid_packages.items()
         ]
-        results = await asyncio.gather(*tasks)
-        success_count = sum(1 for r in results if r)
-
-        print()
-        print(f"更新完成: {success_count}/{total_count} 个包更新成功")
-        return success_count, total_count
-
-    def _is_package_updatable(
+        results = await asyncio.gather(*tasks, return_exceptions=True)
+        success_count = sum(1 for r in results if r is True)
         self, package_name: str, package_config: PackageConfig
     ) -> tuple[bool, str | None]:
         """
@@ -539,8 +533,8 @@ class PackageUpdater:
         tasks = [
             self.update_package(name, config) for name, config in valid_packages.items()
         ]
-        results = await asyncio.gather(*tasks)
-        success_count = sum(1 for r in results if r)
+        results = await asyncio.gather(*tasks, return_exceptions=True)
+        success_count = sum(1 for r in results if r is True)
 
         print()
         print(f"更新完成: {success_count}/{total_count} 个包更新成功")
