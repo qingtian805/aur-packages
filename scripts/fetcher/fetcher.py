@@ -1,14 +1,24 @@
 """HTTP 客户端模块"""
 
+import time
 from typing import Any
+from urllib.parse import urlparse, parse_qs, urlencode, urlunparse
 
 from httpx import AsyncClient
 
 DEFAULT_HEADERS = {
     "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/140.0.4472.124 Safari/537.36",
     "Accept": "*/*",
-    "Cache-Control": "no-cache",
 }
+
+
+def _bust_cache(url: str) -> str:
+    """给 URL 添加时间戳参数以绕过 CDN 缓存"""
+    parsed = urlparse(url)
+    params = parse_qs(parsed.query)
+    params["_t"] = [str(int(time.time()))]
+    new_query = urlencode(params, doseq=True)
+    return urlunparse(parsed._replace(query=new_query))
 
 
 class Fetcher:
@@ -24,11 +34,12 @@ class Fetcher:
         self.client = AsyncClient(timeout=timeout, headers=merged_headers)
 
     async def fetch_json(
-        self, url: str, headers: dict[str, str] | None = None
+        self, url: str, headers: dict[str, str] | None = None, *, no_cache: bool = False
     ) -> Any | None:
         """获取 JSON 数据"""
         try:
-            response = await self.client.get(url, headers=headers)
+            target_url = _bust_cache(url) if no_cache else url
+            response = await self.client.get(target_url, headers=headers)
             response.raise_for_status()
             return response.json()
         except Exception as e:
@@ -36,11 +47,12 @@ class Fetcher:
             return None
 
     async def fetch_text(
-        self, url: str, headers: dict[str, str] | None = None
+        self, url: str, headers: dict[str, str] | None = None, *, no_cache: bool = False
     ) -> str | None:
         """获取文本数据"""
         try:
-            response = await self.client.get(url, headers=headers)
+            target_url = _bust_cache(url) if no_cache else url
+            response = await self.client.get(target_url, headers=headers)
             response.raise_for_status()
             return response.text
         except Exception as e:

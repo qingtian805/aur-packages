@@ -181,7 +181,7 @@ class PackageUpdater:
         try:
             # 1. 获取最新版本信息
             print(f"  1. 从 {package_config.fetch_url} 获取版本信息...")
-            response_data = await self.fetcher.fetch_text(package_config.fetch_url)
+            response_data = await self.fetcher.fetch_text(package_config.fetch_url, no_cache=True)
             if not response_data:
                 print("  错误: 无法获取版本信息")
                 return False
