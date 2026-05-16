@@ -65,7 +65,6 @@ class TestPackageConfig:
             upstream="test/test",
             parser="TestParser",
             pkgbuild="packages/test/PKGBUILD",
-            source_url="https://example.com",
         )
         assert config.name == "test"
 

@@ -1,7 +1,7 @@
 """配置文件加载模块"""
 
 import yaml
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 from constants.constants import ArchEnum
 
@@ -9,27 +9,27 @@ from constants.constants import ArchEnum
 class DownloadSettings(BaseModel):
     """下载配置"""
 
+    model_config = ConfigDict(extra="ignore")
+
     max_retries: int = 3
     retry_wait: int = 1
     timeout: int = 60
     connections: int = 16
     show_progress: bool = True
 
-    class Config:
-        extra = "ignore"
-
 
 class Settings(BaseModel):
     """全局配置"""
 
-    download: DownloadSettings = Field(default_factory=DownloadSettings)
+    model_config = ConfigDict(extra="ignore")
 
-    class Config:
-        extra = "ignore"
+    download: DownloadSettings = Field(default_factory=DownloadSettings)
 
 
 class PackageConfig(BaseModel):
     """单个包的配置"""
+
+    model_config = ConfigDict(extra="ignore")
 
     name: str
     source: str
@@ -41,10 +41,6 @@ class PackageConfig(BaseModel):
     update_source_url: bool = Field(default=True)
     enable: bool = Field(default=True)
     urls: dict[str, str] = Field(default_factory=dict)
-
-    class Config:
-        extra = "ignore"
-        validate_by_name = True
 
     def get_supported_archs(self) -> list[ArchEnum]:
         """将字符串架构列表转换为 ArchEnum 列表"""
@@ -60,11 +56,10 @@ class PackageConfig(BaseModel):
 class ConfigLoader(BaseModel):
     """配置加载器，管理全局设置和包配置"""
 
+    model_config = ConfigDict(extra="ignore")
+
     settings: Settings = Field(default_factory=Settings)
     packages: dict[str, PackageConfig] = Field(default_factory=dict)
-
-    class Config:
-        extra = "ignore"
 
     @classmethod
     def load_from_yaml(cls, filepath: str = "config.yaml") -> "ConfigLoader":

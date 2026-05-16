@@ -458,6 +458,12 @@ class PackageUpdater:
         ]
         results = await asyncio.gather(*tasks, return_exceptions=True)
         success_count = sum(1 for r in results if r is True)
+
+        print()
+        print(f"更新完成: {success_count}/{total_count} 个包更新成功")
+        return success_count, total_count
+
+    def _is_package_updatable(
         self, package_name: str, package_config: PackageConfig
     ) -> tuple[bool, str | None]:
         """

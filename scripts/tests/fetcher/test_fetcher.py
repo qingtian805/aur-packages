@@ -1,5 +1,7 @@
+from unittest.mock import AsyncMock, MagicMock, patch
+
 import pytest
-from unittest.mock import AsyncMock, patch
+
 from fetcher.fetcher import Fetcher
 
 navicat_fech_url = "https://www.navicat.com.cn/products/navicat-premium-release-note#L"
@@ -10,7 +12,7 @@ async def test_fetch_text_success():
     """正常返回文本"""
     mock_response = AsyncMock()
     mock_response.text = "hello"
-    mock_response.raise_for_status.return_value = None
+    mock_response.raise_for_status = MagicMock(return_value=None)
 
     with patch("fetcher.fetcher.AsyncClient.get", return_value=mock_response):
         fetcher = Fetcher()
