@@ -8,128 +8,135 @@ on:
 permissions:
   contents: write
 
+concurrency:
+  group: update-packages-${{ github.ref }}
+  cancel-in-progress: true
+
 env:
   GIT_AUTHOR_NAME: "github-actions[bot]"
   GIT_AUTHOR_EMAIL: "github-actions[bot]@users.noreply.github.com"
-  BUILDER_USER: "aurbuilder"
 
 jobs:
   update:
-    name: Update AUR Packages
+    name: Detect updates
     runs-on: ubuntu-latest
-    container:
-      image: archlinux:latest
-
+    outputs:
+      changed_packages: ${{ steps.detect.outputs.packages }}
     steps:
-      - name: Install system dependencies
-        run: |
-          pacman -Syy --noconfirm --needed
-          pacman -S --noconfirm --needed base-devel git uv sudo
-
-      - name: Create builder user and setup environment
-        run: |
-          # Create non-root user for makepkg (makepkg refuses to run as root)
-          useradd -m "${{ env.BUILDER_USER }}"
-          echo "${{ env.BUILDER_USER }} ALL=(ALL) NOPASSWD: ALL" >> /etc/sudoers
-
-          # Configure git for builder user
-          sudo -u "${{ env.BUILDER_USER }}" git config --global user.name "${{ env.GIT_AUTHOR_NAME }}"
-          sudo -u "${{ env.BUILDER_USER }}" git config --global user.email "${{ env.GIT_AUTHOR_EMAIL }}"
-          sudo -u "${{ env.BUILDER_USER }}" git config --global --add safe.directory "${GITHUB_WORKSPACE}"
-
-          # Also configure safe.directory for root (Check for changes step runs as root)
-          git config --global --add safe.directory "${GITHUB_WORKSPACE}"
-
       - name: Checkout repository
         uses: actions/checkout@v6
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v8.1.0
         with:
-          fetch-depth: 0
+          enable-cache: true
+          cache-dependency-glob: |
+            scripts/pyproject.toml
+            scripts/uv.lock
 
-      - name: Set up uv cache
-        uses: actions/cache@v5
-        with:
-          path: |
-            /home/aurbuilder/.cache/uv
-            scripts/.venv
-          key: ${{ runner.os }}-uv-${{ hashFiles('scripts/pyproject.toml', 'scripts/uv.lock') }}
-          restore-keys: |
-            ${{ runner.os }}-uv-
-
-      - name: Fix permissions
-        run: |
-          chown -R "${{ env.BUILDER_USER }}:${{ env.BUILDER_USER }}" "${GITHUB_WORKSPACE}"
-          mkdir -p /home/aurbuilder/.cache/uv
-          chown -R "${{ env.BUILDER_USER }}:${{ env.BUILDER_USER }}" /home/aurbuilder/.cache/uv
-
-      - name: Install dependencies and update packages
+      - name: Sync dependencies and update packages
         working-directory: scripts
         run: |
-          sudo -u "${{ env.BUILDER_USER }}" bash << 'EOF'
-          echo "::group::Sync dependencies"
           uv sync
-          echo "::endgroup::"
-
-          echo "::group::Update packages"
           uv run main.py --all
-          echo "::endgroup::"
-          EOF
 
-      - name: Check for changes
-        id: check_changes
+      - name: Detect changed packages
+        id: detect
         run: |
-          UPDATED_PACKAGES=()
-          HAS_CHANGES=false
-
-          for pkg_path in packages/*; do
+          CHANGED=()
+          for pkg_path in packages/*/; do
             [ -d "$pkg_path" ] || continue
             pkg_name=$(basename "$pkg_path")
-
-            if ! git diff --quiet "$pkg_path/PKGBUILD"; then
-              UPDATED_PACKAGES+=("$pkg_name")
-              HAS_CHANGES=true
+            if ! git diff --quiet -- "$pkg_path/PKGBUILD"; then
+              CHANGED+=("$pkg_name")
             fi
           done
 
-          if [ "$HAS_CHANGES" = true ]; then
-            echo "has_changes=true" >> "$GITHUB_OUTPUT"
-            echo "updated_count=${#UPDATED_PACKAGES[@]}" >> "$GITHUB_OUTPUT"
+          if [ ${#CHANGED[@]} -eq 0 ]; then
+            echo "packages=[]" >> "$GITHUB_OUTPUT"
           else
-            echo "has_changes=false" >> "$GITHUB_OUTPUT"
-            echo "updated_count=0" >> "$GITHUB_OUTPUT"
+            packages=$(printf '%s\n' "${CHANGED[@]}" | jq -R . | jq -s -c .)
+            echo "packages=$packages" >> "$GITHUB_OUTPUT"
           fi
 
-      - name: Commit changes
-        if: steps.check_changes.outputs.has_changes == 'true'
+      - name: Upload updated PKGBUILDs
+        if: steps.detect.outputs.packages != '[]'
+        uses: actions/upload-artifact@v7
+        with:
+          name: pkgbuilds
+          path: packages/
+
+  generate-srcinfo:
+    name: .SRCINFO (${{ matrix.package }})
+    needs: update
+    if: needs.update.outputs.changed_packages != '[]'
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        package: ${{ fromJson(needs.update.outputs.changed_packages) }}
+      fail-fast: false
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+
+      - name: Download updated PKGBUILDs
+        uses: actions/download-artifact@v8
+        with:
+          name: pkgbuilds
+          path: packages/
+
+      - name: Generate .SRCINFO
+        uses: heyhusen/archlinux-package-action@v3.0.0
+        with:
+          path: packages/${{ matrix.package }}
+          flags: ''
+          namcap: false
+          srcinfo: true
+
+      - name: Prepare .SRCINFO artifact
         run: |
-          sudo -u "${{ env.BUILDER_USER }}" bash << 'EOF'
-          echo "::group::Stage PKGBUILD files"
-          for pkg_path in packages/*; do
-            [ -d "$pkg_path" ] || continue
-            pkg_name=$(basename "$pkg_path")
+          mkdir -p "tmp/artifact/${{ matrix.package }}"
+          cp "packages/${{ matrix.package }}/.SRCINFO" "tmp/artifact/${{ matrix.package }}/"
 
-            # Skip if PKGBUILD does not exist
-            [ -f "$pkg_path/PKGBUILD" ] || continue
+      - name: Upload .SRCINFO
+        uses: actions/upload-artifact@v7
+        with:
+          name: srcinfo-${{ matrix.package }}
+          path: tmp/artifact/
 
-            # Add PKGBUILD
-            git add "$pkg_path/PKGBUILD"
+  commit:
+    name: Commit and push
+    needs: [update, generate-srcinfo]
+    if: needs.update.outputs.changed_packages != '[]'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
 
-            # Generate and add .SRCINFO for AUR
-            echo "::notice::Generating .SRCINFO for $pkg_name"
-            (cd "$pkg_path" && makepkg --printsrcinfo > .SRCINFO)
-            git add "$pkg_path/.SRCINFO"
-          done
-          echo "::endgroup::"
+      - name: Download updated PKGBUILDs
+        uses: actions/download-artifact@v8
+        with:
+          name: pkgbuilds
+          path: packages/
 
-          # Show what will be committed
-          echo "::group::Staged changes"
-          git diff --cached --stat
-          echo "::endgroup::"
+      - name: Download .SRCINFO files
+        uses: actions/download-artifact@v8
+        with:
+          pattern: srcinfo-*
+          merge-multiple: true
+          path: packages/
 
-          # Commit and push
-          updated_count="${{ steps.check_changes.outputs.updated_count }}"
+      - name: Commit and push
+        run: |
+          git config user.name "${{ env.GIT_AUTHOR_NAME }}"
+          git config user.email "${{ env.GIT_AUTHOR_EMAIL }}"
+
+          git add packages/
+
+          changed='${{ needs.update.outputs.changed_packages }}'
+          count=$(echo "$changed" | jq 'length')
           git commit -m "chore: update AUR packages" \
-                     -m "Updated ${updated_count} package(s)" \
+                     -m "Updated ${count} package(s)" \
                      -m "Co-Authored-By: github-actions[bot] <github-actions[bot]@users.noreply.github.com>"
 
           git push origin "HEAD:${{ github.ref_name }}"
-          EOF
