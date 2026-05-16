@@ -30,12 +30,14 @@ async def main() -> None:
         # 更新指定的包
         if args.package:
             success_count, total_count = await updater.update_packages(args.package)
-            sys.exit(0 if success_count == total_count else 1)
+            if total_count > 0 and success_count == 0:
+                sys.exit(1)
+            return
 
         # 更新所有包
         success_count, total_count = await updater.update_all_packages()
-        if total_count > 0:
-            sys.exit(0 if success_count == total_count else 1)
+        if total_count > 0 and success_count == 0:
+            sys.exit(1)
     finally:
         await updater.close()
 
