@@ -270,6 +270,35 @@ uv run ty check --watch
 uv add --dev types-requests types-pyyaml
 ```
 
+## Commit 规范
+
+项目使用 [Conventional Commits 1.0.0](https://www.conventionalcommits.org/) 规范，通过 `.githooks/commit-msg` 自动校验。
+
+**格式**：`<type>(<scope>): <description>`
+
+**类型**：
+| 类型 | 用途 |
+|------|------|
+| `feat` | 新功能 |
+| `fix` | 修复 bug |
+| `docs` | 文档变更 |
+| `style` | 代码格式（不影响逻辑） |
+| `refactor` | 重构（非新功能、非修复） |
+| `perf` | 性能优化 |
+| `test` | 测试相关 |
+| `build` | 构建系统或外部依赖 |
+| `ci` | CI 配置 |
+| `chore` | 其他不修改 src 或 test 的变更 |
+| `revert` | 回退提交 |
+
+**示例**：
+```
+feat(qq): add loong64 architecture support
+fix(downloader): handle aria2c timeout gracefully
+docs: update CLAUDE.md with commit conventions
+ci: add test workflow for QQ version parsing
+```
+
 ## 注意事项
 
 - **项目严格使用类型注解**，所有函数必须包含完整的参数和返回类型注解
