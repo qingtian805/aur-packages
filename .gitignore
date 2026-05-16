@@ -1,3 +1,4 @@
+# Binary / archive files
 *.tar
 *.tar.*
 *.jar
@@ -6,13 +7,20 @@
 *.deb
 *.zip
 *.tgz
+*.AppImage
 *.log
 *.log.*
 *.sig
 
+# AUR build artifacts
 pkg/
 src/
 
+# Downloaded package files
+scripts/downloads/
+
+# aria2c control files
+*.aria2
 
 # Python-generated files
 __pycache__/
@@ -25,4 +33,10 @@ wheels/
 # Virtual environments
 .venv
 
-*.DS_Store
+# Testing
+.pytest_cache/
+.coverage
+htmlcov/
+
+# macOS
+.DS_Store
