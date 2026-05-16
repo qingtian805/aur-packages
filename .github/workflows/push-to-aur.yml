@@ -70,11 +70,27 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v6
 
+      - name: Detect package assets
+        id: assets
+        run: |
+          assets=""
+          for file in packages/${{ matrix.package }}/*; do
+            basename=$(basename "$file")
+            [ "$basename" = "PKGBUILD" ] && continue
+            [ "$basename" = ".gitignore" ] && continue
+            [ -f "$file" ] || continue
+            assets="${assets}${file}"$'\n'
+          done
+          echo "files<<EOF" >> "$GITHUB_OUTPUT"
+          echo "$assets" >> "$GITHUB_OUTPUT"
+          echo "EOF" >> "$GITHUB_OUTPUT"
+
       - name: Publish ${{ matrix.package }} to AUR
         uses: KSXGitHub/github-actions-deploy-aur@v4.1.3
         with:
           pkgname: ${{ matrix.package }}
           pkgbuild: packages/${{ matrix.package }}/PKGBUILD
+          assets: ${{ steps.assets.outputs.files }}
           commit_username: ${{ env.AUR_USERNAME }}
           commit_email: ${{ env.AUR_EMAIL }}
           ssh_private_key: ${{ secrets.AUR_SSH_PRIVATE_KEY }}
