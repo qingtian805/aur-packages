@@ -8,8 +8,8 @@ arch=('x86_64' 'aarch64')
 url="https://www.trae.cn/"
 license=('custom')
 provides=('trae')
-conflicts=('trae' 'trae-sg')
-depends=('nss' 'alsa-lib' 'gtk3' 'at-spi2-core' 'libsecret' 'libxkbfile')
+conflicts=('trae' 'trae-sg' 'trae-bin')
+depends=('nss' 'alsa-lib' 'gtk3' 'at-spi2-core' 'libsecret' 'xdg-utils')
 optdepends=('libappindicator-gtk3: System tray support')
 options=('!strip' '!debug')
 install=trae.install
@@ -23,8 +23,11 @@ sha512sums_aarch64=('86543ed2425beb6dc29fe6f99d1a6efe7028a6f86c88a3ffd8ccbb7baff
 
 package() {
     install -d "${pkgdir}/opt/trae"
-    cp -r "${srcdir}/Trae-linux-x64/"* "${pkgdir}/opt/trae/" 2>/dev/null || \
-    cp -r "${srcdir}/Trae-linux-arm64/"* "${pkgdir}/opt/trae/" 2>/dev/null || true
+
+    for f in "${srcdir}"/*; do
+        case "${f##*/}" in trae.sh|trae.desktop) continue ;; esac
+        cp -a "$f" "${pkgdir}/opt/trae/"
+    done
 
     # SUID sandbox
     chmod 4755 "${pkgdir}/opt/trae/chrome-sandbox"
@@ -36,7 +39,7 @@ package() {
     install -Dm644 "${srcdir}/trae.desktop" "${pkgdir}/usr/share/applications/trae.desktop"
 
     # Icon
-    install -Dm644 "${pkgdir}/opt/trae/resources/app/resources/linux/code.png" "${pkgdir}/usr/share/pixmaps/trae.png"
+    install -Dm644 "${pkgdir}/opt/trae/resources/app/resources/linux/code.png" "${pkgdir}/usr/share/icons/hicolor/512x512/apps/trae.png"
 
     # License
     install -Dm644 "${pkgdir}/opt/trae/resources/app/LICENSE.txt" "${pkgdir}/usr/share/licenses/${pkgname}/LICENSE"
