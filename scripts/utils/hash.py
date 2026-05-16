@@ -3,10 +3,18 @@
 import hashlib
 from collections.abc import Callable
 from pathlib import Path
+from typing import Protocol, runtime_checkable
 
 from constants.constants import HashAlgorithmEnum
 
-_HASH_BUILDERS: dict[str, Callable[[], hashlib._hashlib.HASH]] = {
+
+@runtime_checkable
+class _Hash(Protocol):
+    def update(self, data: bytes, /) -> None: ...
+    def hexdigest(self) -> str: ...
+
+
+_HASH_BUILDERS: dict[str, Callable[[], _Hash]] = {
     HashAlgorithmEnum.SHA256.value: hashlib.sha256,
     HashAlgorithmEnum.SHA512.value: hashlib.sha512,
 }
@@ -30,7 +38,7 @@ def calculate_file_hash(
             f"不支持的哈希算法: {hash_algorithm}，支持的算法: {list(_HASH_BUILDERS.keys())}"
         )
 
-    hash_func: hashlib._hashlib.HASH = _HASH_BUILDERS[hash_algorithm.lower()]()
+    hash_func = _HASH_BUILDERS[hash_algorithm.lower()]()
 
     with file_path.open("rb") as f:
         for chunk in iter(lambda: f.read(4096), b""):
@@ -48,7 +56,7 @@ def calculate_multiple_hashes(
     if algorithms is None:
         algorithms = [HashAlgorithmEnum.SHA256.value, HashAlgorithmEnum.SHA512.value]
 
-    hashers: list[hashlib._hashlib.HASH] = [
+    hashers: list[_Hash] = [
         _HASH_BUILDERS[alg.lower()]() for alg in algorithms
     ]
 
