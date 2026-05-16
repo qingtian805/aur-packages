@@ -36,9 +36,10 @@ class PackageUpdater:
         self.fetcher = Fetcher(timeout=download_settings.timeout)
 
         # 注册解析器
+        navicat_urls = self.config.packages["navicat"].urls
         self.parsers: dict[str, BaseParser] = {
             ParserEnum.QQ.value: QQParser(),
-            ParserEnum.NAVICAT_PREMIUM_CS.value: NavicatPremiumCSParser(),
+            ParserEnum.NAVICAT_PREMIUM_CS.value: NavicatPremiumCSParser(urls=navicat_urls),
             ParserEnum.TRAE.value: TraeParser(),
             ParserEnum.TRAE_SG.value: TraeParser(region=TraeRegion.SG),
             ParserEnum.TRAE_US.value: TraeParser(region=TraeRegion.US),
