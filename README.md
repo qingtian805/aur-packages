@@ -34,17 +34,13 @@ uv run main.py --list       # 列出所有包
 
 ## 支持的包
 
-- `linuxqq-nt` - QQ Linux
-- `navicat17-premium-zh-cn` - Navicat Premium
-
-## 添加新包
-
-1. **编辑配置** (`scripts/config.yaml`)
-2. **创建解析器** (`scripts/parsers/`)，继承 `BaseParser`
-3. **注册解析器**：在 `constants/constants.py` 的 `ParserEnum` 和 `core/package_updater.py` 中注册
-4. **创建 PKGBUILD**：在 `packages/` 目录
-
-详细步骤见 [CLAUDE.md](CLAUDE.md)。
+| 包名 | 说明 |
+|------|------|
+| `linuxqq-nt` | QQ Linux |
+| `navicat17-premium-zh-cn` | Navicat Premium 中文版 |
+| `trae` | Trae AI IDE（中国 CDN） |
+| `trae-sg` | Trae AI IDE（新加坡 CDN） |
+| `trae-us` | Trae AI IDE（美国 CDN） |
 
 ## 开发
 
@@ -60,6 +56,10 @@ uv sync          # 同步依赖
 - aria2c (多线程下载)
 - httpx (异步 HTTP)
 - pydantic (数据验证)
+
+## 贡献
+
+欢迎贡献！请阅读 [贡献指南](CONTRIBUTING.md)。
 
 ## 许可证
 
