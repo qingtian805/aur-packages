@@ -1,9 +1,5 @@
 #!/bin/bash
 
-if [ -d "$HOME/.config/QQ/versions" ]; then
-    find "$HOME/.config/QQ/versions" -name libssh2.so.1 -type f -exec rm -f {} \; 2>/dev/null
-fi
-
 if [ -d "$HOME/.config/QQ/crash_files" ] && [ ! -L "$HOME/.config/QQ/crash_files" ]; then
     rm -rf "$HOME/.config/QQ/crash_files"/*
 fi
