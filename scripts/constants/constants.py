@@ -29,3 +29,4 @@ class ParserEnum(Enum):
     TRAE = "TraeParser"
     TRAE_SG = "TraeParser_SG"
     TRAE_US = "TraeParser_US"
+    ZEN = "ZenParser"

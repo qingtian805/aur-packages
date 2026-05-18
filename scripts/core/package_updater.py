@@ -17,6 +17,7 @@ from parsers.base_parser import BaseParser
 from parsers.navicat import NavicatPremiumCSParser
 from parsers.qq import QQParser
 from parsers.trae import TraeParser, TraeRegion
+from parsers.zen import ZenParser
 from updater.pkgbuild_editor import PKGBUILDEditor
 from utils.downloader import Downloader
 from utils.url_utils import generate_download_filename
@@ -46,6 +47,7 @@ class PackageUpdater:
             ParserEnum.TRAE.value: TraeParser(),
             ParserEnum.TRAE_SG.value: TraeParser(region=TraeRegion.SG),
             ParserEnum.TRAE_US.value: TraeParser(region=TraeRegion.US),
+            ParserEnum.ZEN.value: ZenParser(),
         }
 
         # 初始化下载器（使用配置的下载设置）
