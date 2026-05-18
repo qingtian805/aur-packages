@@ -90,3 +90,17 @@ packages:
     arch:
       - x86_64
       - aarch64
+
+  zen-browser:
+    name: zen-browser
+    source: zen-browser
+    source_url: "https://zen-browser.app/"
+    fetch_url: "https://api.github.com/repos/zen-browser/desktop/releases/tags/twilight-1"
+    upstream: "zen-browser/desktop"
+    parser: ZenParser
+    pkgbuild: "packages/zen-browser-twilight-bin/PKGBUILD"
+    update_source_url: true
+    enable: true
+    arch:
+      - x86_64
+      - aarch64
