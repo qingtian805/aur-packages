@@ -9,7 +9,7 @@ permissions:
   contents: write
 
 concurrency:
-  group: update-packages-${{ github.ref }}
+  group: update-packages
   cancel-in-progress: true
 
 env:
@@ -27,6 +27,8 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v6
+        with:
+          ref: dev
 
       - name: Install aria2
         run: |
@@ -96,6 +98,8 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v6
+        with:
+          ref: dev
 
       - name: Download updated PKGBUILDs
         uses: actions/download-artifact@v8
@@ -131,6 +135,8 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v6
+        with:
+          ref: dev
 
       - name: Download updated PKGBUILDs
         uses: actions/download-artifact@v8
@@ -159,7 +165,7 @@ jobs:
                      -m "Updated ${count} package(s)" \
                      -m "Co-Authored-By: github-actions[bot] <github-actions[bot]@users.noreply.github.com>"
 
-          git push origin "HEAD:${{ github.ref_name }}"
+          git push origin HEAD:dev
 
   push-to-aur:
     name: Push ${{ matrix.package }} to AUR
@@ -174,7 +180,7 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v6
         with:
-          ref: ${{ github.ref_name }}
+          ref: dev
 
       - name: Detect package assets
         id: assets
