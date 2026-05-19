@@ -9,6 +9,8 @@ arch=('x86_64' 'aarch64')
 url='https://www.navicat.com.cn/products/navicat-premium'
 license=('LicenseRef-Navicat')
 depends=('fontconfig' 'freetype2' 'hicolor-icon-theme')
+conflicts=('navicat' 'navicat-premium' 'navicat17-premium')
+provides=("navicat=$pkgver")
 source_x86_64=("${_pkgname}-x86_64-${pkgver}.AppImage::https://dn.navicat.com/download/navicat17-premium-cs-x86_64.AppImage")
 source_aarch64=("${_pkgname}-aarch64-${pkgver}.AppImage::https://dn.navicat.com/download/navicat17-premium-cs-aarch64.AppImage")
 
@@ -31,17 +33,19 @@ package() {
     install -Dm644 "squashfs-root/navicat.desktop" \
         "${pkgdir}/usr/share/applications/navicat.desktop"
     sed -i 's|Icon=.*|Icon=navicat-icon|' "${pkgdir}/usr/share/applications/navicat.desktop"
-    # Bundled libsystemd conflicts with system libmount; preload the host copy
-    sed -i "s|Exec=navicat|Exec=env LD_PRELOAD='/usr/lib/libsystemd.so.0' navicat|" \
-        "${pkgdir}/usr/share/applications/navicat.desktop"
 
     # Icon
     install -Dm644 "squashfs-root/navicat-icon.png" \
         "${pkgdir}/usr/share/icons/hicolor/256x256/apps/navicat-icon.png"
 
-    # Launcher
+    # Launcher (wrapper with LD_PRELOAD to override bundled libsystemd)
     install -d "${pkgdir}/usr/bin"
-    ln -s "/opt/${_pkgname}/AppRun" "${pkgdir}/usr/bin/navicat"
+    cat > "${pkgdir}/usr/bin/navicat" << 'WRAPPER'
+#!/bin/bash
+export LD_PRELOAD="/usr/lib/libsystemd.so.0${LD_PRELOAD:+:$LD_PRELOAD}"
+exec /opt/navicat17-premium-cs/AppRun "$@"
+WRAPPER
+    chmod 755 "${pkgdir}/usr/bin/navicat"
 
     # Remove Debian copyright files
     rm -rf "${pkgdir}/opt/${_pkgname}/usr/share/doc"
