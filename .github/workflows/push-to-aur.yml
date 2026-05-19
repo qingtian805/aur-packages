@@ -2,9 +2,6 @@ name: Push to AUR
 
 on:
   workflow_dispatch:
-    branches:
-      - dev
-      - main
     inputs:
       packages:
         description: '要推送的包名（留空推送所有包，逗号分隔）'
