@@ -9,7 +9,7 @@ permissions:
   contents: write
 
 concurrency:
-  group: update-packages-${{ github.ref }}
+  group: update-packages
   cancel-in-progress: true
 
 env:
