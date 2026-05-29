@@ -4,16 +4,22 @@ import re
 from pathlib import Path
 
 from constants.constants import HashAlgorithmEnum
-from utils.hash import calculate_file_hash, verify_file_hash
 
 
 class PKGBUILDEditor:
-    """PKGBUILD 文件编辑器"""
+    """PKGBUILD 文件编辑器，支持上下文管理器自动保存"""
 
     def __init__(self, pkgbuild_path: Path) -> None:
         self.pkgbuild_path = pkgbuild_path
         self.content = ""
         self._load_content()
+
+    def __enter__(self) -> "PKGBUILDEditor":
+        return self
+
+    def __exit__(self, exc_type: type | None, exc_val: BaseException | None, exc_tb: object) -> None:
+        if exc_type is None:
+            self.save()
 
     def _load_content(self) -> None:
         """加载 PKGBUILD 文件内容"""
@@ -74,15 +80,16 @@ class PKGBUILDEditor:
 
     def update_source_url(self, arch: str, new_url: str) -> None:
         """更新特定架构的 source URL，保留已有的 :: 别名"""
+        escaped_arch = re.escape(arch)
         # 匹配单引号或双引号包裹的 :: 别名格式
-        pattern = f"""^source_{arch}=\\((?:['"]([^'"]*)::[^'"]*['"]|.*)\\)$"""
+        pattern = f"""^source_{escaped_arch}=\\((?:['"]([^'"]*)::[^'"]*['"]|.*)\\)$"""
         match = re.search(pattern, self.content, flags=re.MULTILINE)
         if match and match.group(1):
             replacement = f'source_{arch}=("{match.group(1)}::{new_url}")'
         else:
             replacement = f"source_{arch}=('{new_url}')"
         self.content = re.sub(
-            f"^source_{arch}=\\(.*\\)$",
+            f"^source_{escaped_arch}=\\(.*\\)$",
             replacement,
             self.content,
             flags=re.MULTILINE,
@@ -96,12 +103,22 @@ class PKGBUILDEditor:
     def get_pkgrel(self) -> int:
         """获取当前 pkgrel 值"""
         match = re.search(r"^pkgrel=(.*)$", self.content, flags=re.MULTILINE)
-        return int(match.group(1)) if match else 1
+        if not match:
+            return 1
+        try:
+            return int(match.group(1))
+        except ValueError:
+            return 1
 
     def get_epoch(self) -> int | None:
         """获取当前 epoch 值"""
         match = re.search(r"^epoch=(.*)$", self.content, flags=re.MULTILINE)
-        return int(match.group(1)) if match else None
+        if not match:
+            return None
+        try:
+            return int(match.group(1))
+        except ValueError:
+            return None
 
     def get_checksum(self, arch: str | None = None) -> str:
         """获取当前校验和值"""
@@ -113,39 +130,6 @@ class PKGBUILDEditor:
         match = re.search(pattern, self.content, flags=re.MULTILINE)
         return match.group(1) if match else ""
 
-    def update_all(
-        self,
-        new_version: str,
-        new_checksums: dict[str, str],
-        new_urls: dict[str, str],
-        new_pkgrel: int = 1,
-        new_epoch: int | None = None,
-        generic_checksum: str | None = None,
-        hash_algorithm: str = HashAlgorithmEnum.SHA512.value,
-    ) -> None:
-        """一次性更新所有相关字段"""
-        self.update_pkgver(new_version)
-        self.update_pkgrel(new_pkgrel)
-
-        if new_epoch is not None:
-            self.update_epoch(new_epoch)
-
-        if generic_checksum:
-            if hash_algorithm == HashAlgorithmEnum.SHA512.value:
-                self.update_sha512sums(generic_checksum)
-            else:
-                pattern = f"^{hash_algorithm}sums=\\(.*\\)$"
-                replacement = f"{hash_algorithm}sums=('{generic_checksum}')"
-                self.content = re.sub(
-                    pattern, replacement, self.content, flags=re.MULTILINE
-                )
-
-        for arch, checksum in new_checksums.items():
-            self.update_arch_checksum(arch, checksum, hash_algorithm)
-
-        for arch, url in new_urls.items():
-            self.update_source_url(arch, url)
-
     def save(self) -> None:
         """保存所有更改到文件"""
         self._save_content()
@@ -153,41 +137,3 @@ class PKGBUILDEditor:
     def reload(self) -> None:
         """重新加载文件内容，放弃未保存的更改"""
         self._load_content()
-
-    def calculate_and_update_checksum(
-        self,
-        file_path: str | Path,
-        arch: str | None = None,
-        hash_algorithm: str = HashAlgorithmEnum.SHA512.value,
-    ) -> None:
-        """计算文件校验和并更新到 PKGBUILD"""
-        checksum = calculate_file_hash(file_path, hash_algorithm)
-
-        if arch:
-            if hash_algorithm == HashAlgorithmEnum.SHA512.value:
-                self.update_arch_checksum(arch, checksum)
-            else:
-                pattern = f"^{hash_algorithm}sums_{arch}=\\(.*\\)$"
-                replacement = f"{hash_algorithm}sums_{arch}=('{checksum}')"
-                self.content = re.sub(
-                    pattern, replacement, self.content, flags=re.MULTILINE
-                )
-        else:
-            if hash_algorithm == HashAlgorithmEnum.SHA512.value:
-                self.update_sha512sums(checksum)
-            else:
-                pattern = f"^{hash_algorithm}sums=\\(.*\\)$"
-                replacement = f"{hash_algorithm}sums=('{checksum}')"
-                self.content = re.sub(
-                    pattern, replacement, self.content, flags=re.MULTILINE
-                )
-
-    def verify_existing_checksum(
-        self,
-        file_path: str | Path,
-        expected_hash: str,
-        arch: str | None = None,
-        hash_algorithm: str = HashAlgorithmEnum.SHA512.value,
-    ) -> bool:
-        """验证文件哈希值是否匹配预期值"""
-        return verify_file_hash(file_path, expected_hash, hash_algorithm)

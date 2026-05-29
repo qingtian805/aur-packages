@@ -1,6 +1,5 @@
 """配置加载器单元测试"""
 
-import pytest
 
 from constants.constants import ArchEnum
 from loaders.config_loader import ConfigLoader, PackageConfig

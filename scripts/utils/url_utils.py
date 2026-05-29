@@ -16,8 +16,7 @@ def extract_filename_from_url(url: str) -> str:
     filename = Path(path).name
 
     if not filename:
-        filename = path.split("?")[0].split("#")[0]
-        filename = filename.rstrip("/").split("/")[-1]
+        return ""
 
     return filename
 

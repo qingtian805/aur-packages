@@ -1,5 +1,7 @@
 """PKGBUILD 编辑器单元测试"""
 
+from pathlib import Path
+
 import pytest
 
 from updater.pkgbuild_editor import PKGBUILDEditor
@@ -20,7 +22,7 @@ sha512sums_aarch64=('bbb222')
 
 
 @pytest.fixture
-def pkgbuild(tmp_path):
+def pkgbuild(tmp_path) -> Path:
     """创建临时 PKGBUILD 文件"""
     p = tmp_path / "PKGBUILD"
     p.write_text(PKGBUILD_TEMPLATE, encoding="utf-8")

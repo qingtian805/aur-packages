@@ -64,61 +64,6 @@ class Downloader:
             "-c",
         ]
 
-    async def download_file(
-        self,
-        url: str,
-        file_path: Path,
-        *,
-        arch: str = "unknown",
-    ) -> DownloadResult:
-        """下载单个文件"""
-        file_path.parent.mkdir(parents=True, exist_ok=True)
-
-        args = self._build_base_args() + [
-            "-d", str(file_path.parent),
-            "-o", file_path.name,
-            url,
-        ]
-
-        try:
-            pipe_output = not self.show_progress
-            proc = await asyncio.create_subprocess_exec(
-                *args,
-                stdout=asyncio.subprocess.PIPE if pipe_output else None,
-                stderr=asyncio.subprocess.PIPE if pipe_output else None,
-            )
-            stdout, stderr = await proc.communicate()
-        except Exception as e:
-            return DownloadResult(
-                arch=arch,
-                success=False,
-                error=f"{url} -> {type(e).__name__}: {e}",
-            )
-
-        if proc.returncode == 0 and file_path.exists():
-            return DownloadResult(
-                arch=arch,
-                success=True,
-                file_path=file_path,
-            )
-
-        if pipe_output:
-            error_detail = (stderr or stdout or b"").decode(errors="replace").strip()
-            if error_detail:
-                lines = error_detail.splitlines()
-                error_detail = lines[-1] if len(lines) == 1 else "\n".join(lines[-3:])
-        else:
-            error_detail = "see aria2c output above"
-
-        if file_path.exists():
-            file_path.unlink()
-
-        return DownloadResult(
-            arch=arch,
-            success=False,
-            error=f"{url} -> aria2c exited with code {proc.returncode}: {error_detail}",
-        )
-
     async def download_all(
         self,
         downloads: dict[str, tuple[str, Path]],

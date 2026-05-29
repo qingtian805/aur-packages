@@ -1,7 +1,11 @@
 """配置文件加载模块"""
 
+import logging
+
 import yaml
 from pydantic import BaseModel, ConfigDict, Field
+
+logger = logging.getLogger(__name__)
 
 from constants.constants import ArchEnum
 
@@ -50,6 +54,8 @@ class PackageConfig(BaseModel):
                 if arch_enum.value == arch_str:
                     supported_archs.append(arch_enum)
                     break
+            else:
+                logger.warning("未知的架构标识: %s", arch_str)
         return supported_archs
 
 
@@ -66,4 +72,6 @@ class ConfigLoader(BaseModel):
         """从 YAML 文件加载配置"""
         with open(filepath, encoding="utf-8") as f:
             data = yaml.safe_load(f)
+        if data is None:
+            raise ValueError(f"配置文件为空: {filepath}")
         return cls(**data)

@@ -491,11 +491,6 @@ class PackageUpdater:
 
         return True, None
 
-    async def update_single_package(self, package_name: str) -> bool:
-        """更新单个指定的包"""
-        success_count, total_count = await self.update_packages([package_name])
-        return success_count > 0 and total_count > 0
-
     async def update_packages(self, package_names: list[str]) -> tuple[int, int]:
         """
         更新指定的包列表
