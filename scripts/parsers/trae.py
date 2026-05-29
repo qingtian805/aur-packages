@@ -43,7 +43,7 @@ class TraeParser(BaseParser):
         if not isinstance(response_data, str):
             return None
 
-        arch_value = arch.value if isinstance(arch, ArchEnum) else arch
+        arch_value: str = arch.value if isinstance(arch, ArchEnum) else arch
         url_key = ARCH_KEY_MAP.get(arch_value)
         if not url_key:
             return None

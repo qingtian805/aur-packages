@@ -26,7 +26,7 @@ class ZenParser(BaseParser):
     API 端点: https://api.github.com/repos/zen-browser/desktop/releases/tags/twilight-1
     """
 
-    _VERSION_PATTERN: re.Pattern[str] = re.compile(
+    VERSION_PATTERN: re.Pattern[str] = re.compile(
         r"(\d+\.\d+[a-z]?)"
     )
 
@@ -50,7 +50,7 @@ class ZenParser(BaseParser):
             logger.warning("Zen Browser: Release 缺少 name 字段")
             return None
 
-        match: re.Match[str] | None = self._VERSION_PATTERN.search(release_name)
+        match: re.Match[str] | None = self.VERSION_PATTERN.search(release_name)
         if not match:
             logger.warning("Zen Browser: 无法从 release name 提取版本: %s", release_name)
             return None
