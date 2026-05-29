@@ -3,7 +3,6 @@
 import json
 from typing import Any
 
-import pytest
 
 from constants.constants import ArchEnum
 from parsers.zen import ZenParser
