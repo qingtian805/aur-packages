@@ -20,6 +20,24 @@ sha512sums_x86_64=('aaa111')
 sha512sums_aarch64=('bbb222')
 """
 
+PKGBUILD_WITH_EPOCH: str = """\
+# Maintainer: test <test@test.com>
+pkgname=test-pkg
+epoch=5
+pkgver=1.0.0
+pkgrel=1
+sha512sums_x86_64=('aaa111')
+"""
+
+PKGBUILD_ALIAS: str = """\
+# Maintainer: test <test@test.com>
+pkgname=test-pkg
+pkgver=1.0.0
+pkgrel=1
+source_x86_64=("test-${pkgver}-${pkgrel}.tar.gz::https://example.com/test.tar.gz")
+sha512sums_x86_64=('aaa111')
+"""
+
 
 @pytest.fixture
 def pkgbuild(tmp_path) -> Path:
@@ -76,3 +94,95 @@ class TestPKGBUILDEditorUpdate:
 
         editor2 = PKGBUILDEditor(pkgbuild)
         assert editor2.get_pkgver() == "3.0.0"
+
+
+class TestPKGBUILDEditorEpoch:
+    """update_epoch 和 get_epoch 测试"""
+
+    def test_update_epoch_existing(self, tmp_path: Path) -> None:
+        """替换已有的 epoch 行"""
+        p = tmp_path / "PKGBUILD"
+        p.write_text(PKGBUILD_WITH_EPOCH, encoding="utf-8")
+        editor = PKGBUILDEditor(p)
+        editor.update_epoch(10)
+        assert editor.get_epoch() == 10
+
+    def test_update_epoch_insert(self, pkgbuild) -> None:
+        """无 epoch 行时在 pkgver 前插入"""
+        editor = PKGBUILDEditor(pkgbuild)
+        assert editor.get_epoch() is None
+        editor.update_epoch(5)
+        assert editor.get_epoch() == 5
+
+    def test_update_epoch_none(self, pkgbuild) -> None:
+        """new_epoch=None 时不做任何修改"""
+        editor = PKGBUILDEditor(pkgbuild)
+        original = editor.content
+        editor.update_epoch(None)
+        assert editor.content == original
+
+    def test_get_epoch_non_integer(self, tmp_path: Path) -> None:
+        """epoch 值非整数时返回 None"""
+        p = tmp_path / "PKGBUILD"
+        p.write_text("pkgname=test\nepoch=abc\npkgver=1.0\n", encoding="utf-8")
+        editor = PKGBUILDEditor(p)
+        assert editor.get_epoch() is None
+
+
+class TestPKGBUILDEditorEdgeCases:
+    """边界条件测试"""
+
+    def test_get_pkgrel_non_integer(self, tmp_path: Path) -> None:
+        """pkgrel 非数字时返回默认值 1"""
+        p = tmp_path / "PKGBUILD"
+        p.write_text("pkgname=test\npkgver=1.0\npkgrel=abc\n", encoding="utf-8")
+        editor = PKGBUILDEditor(p)
+        assert editor.get_pkgrel() == 1
+
+    def test_get_pkgrel_missing(self, tmp_path: Path) -> None:
+        """无 pkgrel 行时返回默认值 1"""
+        p = tmp_path / "PKGBUILD"
+        p.write_text("pkgname=test\npkgver=1.0\n", encoding="utf-8")
+        editor = PKGBUILDEditor(p)
+        assert editor.get_pkgrel() == 1
+
+    def test_update_sha512sums(self, pkgbuild) -> None:
+        """更新通用 sha512sums 字段"""
+        editor = PKGBUILDEditor(pkgbuild)
+        editor.update_sha512sums("new_generic_hash")
+        assert editor.get_checksum() == "new_generic_hash"
+
+    def test_source_url_alias_preserved(self, tmp_path: Path) -> None:
+        """更新 source URL 时保留 :: 别名"""
+        p = tmp_path / "PKGBUILD"
+        p.write_text(PKGBUILD_ALIAS, encoding="utf-8")
+        editor = PKGBUILDEditor(p)
+        editor.update_source_url("x86_64", "https://example.com/test-v2.tar.gz")
+        assert "test-${pkgver}-${pkgrel}.tar.gz::" in editor.content
+        assert "test-v2.tar.gz" in editor.content
+
+
+class TestPKGBUILDEditorContextManager:
+    """上下文管理器测试"""
+
+    def test_auto_save_on_normal_exit(self, pkgbuild) -> None:
+        """with 块正常退出时自动保存"""
+        with PKGBUILDEditor(pkgbuild) as editor:
+            editor.update_pkgver("9.0.0")
+
+        # 重新加载验证已保存
+        editor2 = PKGBUILDEditor(pkgbuild)
+        assert editor2.get_pkgver() == "9.0.0"
+
+    def test_no_save_on_exception(self, pkgbuild) -> None:
+        """with 块抛异常时不保存"""
+        try:
+            with PKGBUILDEditor(pkgbuild) as editor:
+                editor.update_pkgver("9.0.0")
+                raise RuntimeError("test error")
+        except RuntimeError:
+            pass
+
+        # 重新加载验证未保存
+        editor2 = PKGBUILDEditor(pkgbuild)
+        assert editor2.get_pkgver() == "1.0.0"

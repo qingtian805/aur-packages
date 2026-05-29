@@ -51,6 +51,12 @@ class TestQQParseVersion:
         """
         assert parser.parse_version(js) is None
 
+    def test_malformed_json_in_params(self) -> None:
+        """能匹配 var params 但内容不是合法 JSON 时返回 None"""
+        parser = QQParser()
+        js = 'var params = {invalid json not parseable};'
+        assert parser.parse_version(js) is None
+
 
 class TestQQParseUrl:
     def test_x86_64(self) -> None:
