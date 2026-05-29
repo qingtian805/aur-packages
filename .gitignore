@@ -38,5 +38,9 @@ wheels/
 .coverage
 htmlcov/
 
+# Claude Code local settings (user-specific)
+.claude/settings.local.json
+.claude/plans/
+
 # macOS
 .DS_Store
