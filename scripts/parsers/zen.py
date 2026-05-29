@@ -1,11 +1,14 @@
 """Zen Browser 每夜版解析器"""
 
 import json
+import logging
 import re
 from typing import Any
 
 from constants.constants import ArchEnum
 from .base_parser import BaseParser
+
+logger = logging.getLogger(__name__)
 
 # ArchEnum 值到 GitHub Release asset 名称的映射
 ARCH_ASSET_MAP: dict[str, str] = {
@@ -39,17 +42,17 @@ class ZenParser(BaseParser):
         try:
             data: dict[str, Any] = json.loads(response_data)
         except json.JSONDecodeError:
-            print("Zen Browser: JSON 解析失败")
+            logger.warning("Zen Browser: JSON 解析失败")
             return None
 
         release_name: str | None = data.get("name")
         if not release_name:
-            print("Zen Browser: Release 缺少 name 字段")
+            logger.warning("Zen Browser: Release 缺少 name 字段")
             return None
 
         match: re.Match[str] | None = self._VERSION_PATTERN.search(release_name)
         if not match:
-            print(f"Zen Browser: 无法从 release name 提取版本: {release_name}")
+            logger.warning("Zen Browser: 无法从 release name 提取版本: %s", release_name)
             return None
 
         return match.group(1)
@@ -74,5 +77,5 @@ class ZenParser(BaseParser):
             if asset.get("name") == target_asset_name:
                 return asset.get("browser_download_url")
 
-        print(f"Zen Browser: 未找到 {arch_value} 架构的 asset: {target_asset_name}")
+        logger.warning("Zen Browser: 未找到 %s 架构的 asset: %s", arch_value, target_asset_name)
         return None

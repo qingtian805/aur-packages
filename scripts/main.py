@@ -3,13 +3,25 @@
 
 import argparse
 import asyncio
+import logging
 import sys
 
 from core.package_updater import PackageUpdater
 
 
-async def main() -> None:
+def _configure_logging() -> None:
+    """配置日志格式"""
+    logging.basicConfig(
+        level=logging.INFO,
+        format="%(message)s",
+        handlers=[logging.StreamHandler(sys.stdout)],
+    )
+
+
+async def main() -> int:
     """主函数，处理命令行参数并执行相应操作"""
+    _configure_logging()
+
     parser = argparse.ArgumentParser(description="AUR包更新工具")
     parser.add_argument(
         "--package", "-p", nargs="+", metavar="NAME", help="更新指定的包（可指定多个）"
@@ -25,22 +37,23 @@ async def main() -> None:
         # 列出所有包
         if args.list:
             updater.list_available_packages()
-            return
+            return 0
 
         # 更新指定的包
         if args.package:
             success_count, total_count = await updater.update_packages(args.package)
             if total_count > 0 and success_count == 0:
-                sys.exit(1)
-            return
+                return 1
+            return 0
 
         # 更新所有包
         success_count, total_count = await updater.update_all_packages()
         if total_count > 0 and success_count == 0:
-            sys.exit(1)
+            return 1
+        return 0
     finally:
         await updater.close()
 
 
 if __name__ == "__main__":
-    asyncio.run(main())
+    sys.exit(asyncio.run(main()))

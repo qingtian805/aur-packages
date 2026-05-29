@@ -1,11 +1,14 @@
 """QQ Linux 版本解析器"""
 
 import json
+import logging
 import re
 from typing import Any
 
 from constants.constants import ArchEnum
 from .base_parser import BaseParser
+
+logger = logging.getLogger(__name__)
 
 
 class QQParser(BaseParser):
@@ -20,7 +23,7 @@ class QQParser(BaseParser):
         try:
             return json.loads(matched.group(1))
         except json.JSONDecodeError:
-            print(f"JSON解析失败: {matched.group(1)}")
+            logger.warning("JSON解析失败: %.200s...", matched.group(1))
             return None
 
     def _get_deb_url(self, result: dict[str, Any], arch_value: str) -> str | None:
@@ -54,7 +57,7 @@ class QQParser(BaseParser):
         # 从 API 字段获取基础版本号
         api_version: str | None = result.get("version")
         if not api_version:
-            print("QQ API 响应缺少 version 字段")
+            logger.warning("QQ API 响应缺少 version 字段")
             return None
 
         # 从 deb URL 提取完整版本信息
@@ -72,7 +75,7 @@ class QQParser(BaseParser):
 
         # 交叉验证：API 版本必须与 URL 基础版本一致
         if url_base_version != api_version:
-            print(f"QQ 版本不匹配: API={api_version}, URL={url_base_version}")
+            logger.warning("QQ 版本不匹配: API=%s, URL=%s", api_version, url_base_version)
             return None
 
         return f"{api_version}_{build_number}"

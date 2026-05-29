@@ -1,5 +1,6 @@
 from unittest.mock import AsyncMock, MagicMock, patch
 
+import httpx
 import pytest
 
 from fetcher.fetcher import Fetcher
@@ -23,8 +24,15 @@ async def test_fetch_text_success():
 
 @pytest.mark.asyncio
 async def test_fetch_text_failure():
-    """失败时返回 None"""
-    with patch("fetcher.fetcher.AsyncClient.get", side_effect=Exception("boom")):
+    """HTTP 错误时返回 None"""
+    with patch(
+        "fetcher.fetcher.AsyncClient.get",
+        side_effect=httpx.HTTPStatusError(
+            "boom",
+            request=httpx.Request("GET", "http://invalid.url"),
+            response=httpx.Response(500),
+        ),
+    ):
         fetcher = Fetcher()
         result = await fetcher.fetch_text("http://invalid.url")
 

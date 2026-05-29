@@ -1,8 +1,11 @@
 """HTTP 客户端模块"""
 
+import logging
 from typing import Any
 
-from httpx import AsyncClient
+from httpx import AsyncClient, HTTPError
+
+logger = logging.getLogger(__name__)
 
 DEFAULT_HEADERS = {
     "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/140.0.4472.124 Safari/537.36",
@@ -31,8 +34,8 @@ class Fetcher:
             response = await self.client.get(url, headers=headers)
             response.raise_for_status()
             return response.json()
-        except Exception as e:
-            print(f"从 {url} 获取 JSON 失败: {e}")
+        except HTTPError as e:
+            logger.error("从 %s 获取 JSON 失败: %s", url, e)
             return None
 
     async def fetch_text(
@@ -43,6 +46,6 @@ class Fetcher:
             response = await self.client.get(url, headers=headers)
             response.raise_for_status()
             return response.text
-        except Exception as e:
-            print(f"从 {url} 获取文本失败: {e}")
+        except HTTPError as e:
+            logger.error("从 %s 获取文本失败: %s", url, e)
             return None

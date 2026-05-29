@@ -8,6 +8,8 @@
 """
 
 import asyncio
+import logging
+from functools import partial
 from pathlib import Path
 
 from constants.constants import DOWNLOAD_DIR, ArchEnum, HashAlgorithmEnum, ParserEnum
@@ -20,8 +22,11 @@ from parsers.trae import TraeParser, TraeRegion
 from parsers.zen import ZenParser
 from updater.pkgbuild_editor import PKGBUILDEditor
 from utils.downloader import Downloader
+from utils.hash import calculate_file_hash
 from utils.url_utils import generate_download_filename
 from utils.version_utils import compare_versions
+
+logger = logging.getLogger(__name__)
 
 
 class PackageUpdater:
@@ -38,7 +43,8 @@ class PackageUpdater:
         self.fetcher = Fetcher(timeout=download_settings.timeout)
 
         # 注册解析器
-        navicat_urls = self.config.packages["navicat"].urls
+        navicat_config = self.config.packages.get("navicat")
+        navicat_urls = navicat_config.urls if navicat_config else {}
         self.parsers: dict[str, BaseParser] = {
             ParserEnum.QQ.value: QQParser(),
             ParserEnum.NAVICAT_PREMIUM_CS.value: NavicatPremiumCSParser(
@@ -105,11 +111,11 @@ class PackageUpdater:
         """
         pkgbuild_path = self._get_pkgbuild_path(package_config.pkgbuild)
         if not pkgbuild_path.exists():
-            print(f"  跳过: PKGBUILD 文件不存在: {pkgbuild_path}")
+            logger.warning("  跳过: PKGBUILD 文件不存在: %s", pkgbuild_path)
             return False
         return True
 
-    async def _fetch_arch_urls(
+    def _fetch_arch_urls(
         self, parser: BaseParser, supported_archs: list[ArchEnum], response_data: str
     ) -> dict[str, str]:
         """获取所有架构的下载 URL"""
@@ -119,7 +125,7 @@ class PackageUpdater:
             if url:
                 arch_urls[arch.value] = url
             else:
-                print(f"  警告: 无法获取 {arch.value} 架构的下载URL")
+                logger.warning("无法获取 %s 架构的下载URL", arch.value)
         return arch_urls
 
     async def _download_and_verify(
@@ -159,27 +165,27 @@ class PackageUpdater:
         for arch, result in download_results.items():
             if not result.success:
                 if not verify_only:
-                    print(f"  错误: {arch} 架构下载失败: {result.error}")
+                    logger.error("  错误: %s 架构下载失败: %s", arch, result.error)
                     failed_archs.append(arch)
                 else:
-                    print(f"  警告: {arch} 架构下载失败: {result.error}")
+                    logger.warning("  警告: %s 架构下载失败: %s", arch, result.error)
                 continue
 
             if result.file_path is None:
                 if not verify_only:
-                    print(f"  错误: {arch} 架构文件路径为空")
+                    logger.error("  错误: %s 架构文件路径为空", arch)
                     failed_archs.append(arch)
                 continue
 
             checksum = await self._calculate_checksum(result.file_path)
             checksums[arch] = checksum
-            print(f"  {arch} 架构哈希验证通过: {checksum}")
+            logger.info("  %s 架构哈希验证通过: %s", arch, checksum)
 
         if not verify_only and (failed_archs or not checksums):
             if failed_archs:
-                print(f"  错误: {len(failed_archs)} 个架构下载失败: {failed_archs}")
+                logger.error("  错误: %d 个架构下载失败: %s", len(failed_archs), failed_archs)
             if not checksums:
-                print("  错误: 没有成功下载任何架构的文件")
+                logger.error("  错误: 没有成功下载任何架构的文件")
             return {}, False
 
         return checksums, True
@@ -188,41 +194,41 @@ class PackageUpdater:
         self, package_name: str, package_config: PackageConfig
     ) -> bool:
         """更新单个包"""
-        print(f"开始更新包: {package_name}")
+        logger.info("开始更新包: %s", package_name)
 
         try:
             # 1. 获取最新版本信息
-            print(f"  1. 从 {package_config.fetch_url} 获取版本信息...")
+            logger.info("  1. 从 %s 获取版本信息...", package_config.fetch_url)
             response_data = await self.fetcher.fetch_text(package_config.fetch_url)
             if not response_data:
-                print("  错误: 无法获取版本信息")
+                logger.error("  错误: 无法获取版本信息")
                 return False
 
             # 2. 解析版本号和下载 URL
-            print("  2. 解析版本信息...")
+            logger.info("  2. 解析版本信息...")
             parser = self.parsers.get(package_config.parser)
             if not parser:
-                print(f"  错误: 找不到解析器 {package_config.parser}")
+                logger.error("  错误: 找不到解析器 %s", package_config.parser)
                 return False
 
             new_version = parser.parse_version(response_data)
             if not new_version:
-                print("  错误: 无法解析版本号")
+                logger.error("  错误: 无法解析版本号")
                 return False
 
-            print(f"  最新版本: {new_version}")
+            logger.info("  最新版本: %s", new_version)
 
             # 3. 检查当前版本
             pkgbuild_path = self._get_pkgbuild_path(package_config.pkgbuild)
-            print(f"  PKGBUILD路径: {pkgbuild_path}")
+            logger.info("  PKGBUILD路径: %s", pkgbuild_path)
 
             if not pkgbuild_path.exists():
-                print(f"  错误: PKGBUILD文件不存在: {pkgbuild_path}")
+                logger.error("  错误: PKGBUILD文件不存在: %s", pkgbuild_path)
                 return False
 
             editor = PKGBUILDEditor(pkgbuild_path)
             current_version = editor.get_pkgver()
-            print(f"  当前版本: {current_version}")
+            logger.info("  当前版本: %s", current_version)
 
             # 获取包支持的架构
             supported_archs = package_config.get_supported_archs()
@@ -236,6 +242,7 @@ class PackageUpdater:
                     package_name,
                     new_version,
                     current_version,
+                    version_comparison,
                     parser,
                     supported_archs,
                     response_data,
@@ -253,8 +260,8 @@ class PackageUpdater:
                 package_config,
             )
 
-        except Exception as e:
-            print(f"  错误: 更新包 {package_name} 时发生异常: {e}")
+        except Exception:
+            logger.exception("更新包 %s 时发生异常", package_name)
             return False
 
     async def _handle_version_not_newer(
@@ -262,6 +269,7 @@ class PackageUpdater:
         package_name: str,
         new_version: str,
         current_version: str,
+        version_comparison: int,
         parser: BaseParser,
         supported_archs: list[ArchEnum],
         response_data: str,
@@ -273,30 +281,28 @@ class PackageUpdater:
         1. 当前版本 > 新版本：版本降级，仅验证哈希
         2. 当前版本 = 新版本：版本相同，检查哈希变化并更新 pkgrel
         """
-        version_comparison = compare_versions(new_version, current_version)
-
         if version_comparison < 0:
             # 当前版本 > 新版本：版本降级
-            print(f"  跳过更新: 新版本 {new_version} 低于当前版本 {current_version}")
-            print("  说明: 当前包版本较新，无需降级")
-            print("  注意: 仍将下载并验证哈希数据...")
+            logger.info("  跳过更新: 新版本 %s 低于当前版本 %s", new_version, current_version)
+            logger.info("  说明: 当前包版本较新，无需降级")
+            logger.info("  注意: 仍将下载并验证哈希数据...")
 
-            arch_urls = await self._fetch_arch_urls(
+            arch_urls = self._fetch_arch_urls(
                 parser, supported_archs, response_data
             )
             if not arch_urls:
-                print("  错误: 无法获取任何架构的下载URL")
+                logger.error("  错误: 无法获取任何架构的下载URL")
                 return False
 
             checksums, _ = await self._download_and_verify(
                 package_name, new_version, arch_urls, verify_only=True
             )
 
-            print(f"  包 {package_name} 验证完成（未更新 PKGBUILD）")
+            logger.info("  包 %s 验证完成（未更新 PKGBUILD）", package_name)
             return True
 
         # 当前版本 = 新版本：检查哈希变化
-        print("  版本未变化，检查文件哈希是否变化...")
+        logger.info("  版本未变化，检查文件哈希是否变化...")
 
         # 获取当前 PKGBUILD 中的哈希值
         pkgbuild_path = self._get_pkgbuild_path(
@@ -310,12 +316,12 @@ class PackageUpdater:
             if current_checksum:
                 current_checksums[arch.value] = current_checksum
             else:
-                print(f"  警告: 无法获取 {arch.value} 架构的当前哈希值")
+                logger.warning("  警告: 无法获取 %s 架构的当前哈希值", arch.value)
 
         # 下载并计算新哈希值
-        arch_urls = await self._fetch_arch_urls(parser, supported_archs, response_data)
+        arch_urls = self._fetch_arch_urls(parser, supported_archs, response_data)
         if not arch_urls:
-            print("  错误: 无法获取任何架构的下载URL")
+            logger.error("  错误: 无法获取任何架构的下载URL")
             return False
 
         new_checksums, success = await self._download_and_verify(
@@ -329,20 +335,20 @@ class PackageUpdater:
         for arch, new_checksum in new_checksums.items():
             if arch in current_checksums:
                 if current_checksums[arch] != new_checksum:
-                    print(f"  检测到 {arch} 架构的文件哈希已变化")
+                    logger.info("  检测到 %s 架构的文件哈希已变化", arch)
                     hash_changed = True
                 else:
-                    print(f"  {arch} 架构的文件哈希未变化")
+                    logger.info("  %s 架构的文件哈希未变化", arch)
 
         if not hash_changed:
-            print("  所有架构的文件哈希均未变化，无需更新")
+            logger.info("  所有架构的文件哈希均未变化，无需更新")
             return True
 
         # 哈希已变化，自增 pkgrel
-        print("  文件哈希已变化，更新 pkgrel 和校验和...")
+        logger.info("  文件哈希已变化，更新 pkgrel 和校验和...")
         current_pkgrel = editor.get_pkgrel()
         new_pkgrel = current_pkgrel + 1
-        print(f"  pkgrel: {current_pkgrel} → {new_pkgrel}")
+        logger.info("  pkgrel: %d → %d", current_pkgrel, new_pkgrel)
 
         editor.update_pkgrel(new_pkgrel)
 
@@ -351,7 +357,7 @@ class PackageUpdater:
             editor.update_arch_checksum(arch, checksum)
 
         editor.save()
-        print(f"  包 {package_name} 的 pkgrel 已更新（版本未变但哈希已变）")
+        logger.info("  包 %s 的 pkgrel 已更新（版本未变但哈希已变）", package_name)
         return True
 
     async def _handle_version_update(
@@ -366,12 +372,12 @@ class PackageUpdater:
         package_config: PackageConfig,
     ) -> bool:
         """处理版本更新流程"""
-        print("  3. 下载文件并计算校验和...")
-        print(f"  支持的架构: {[arch.value for arch in supported_archs]}")
+        logger.info("  3. 下载文件并计算校验和...")
+        logger.info("  支持的架构: %s", [arch.value for arch in supported_archs])
 
-        arch_urls = await self._fetch_arch_urls(parser, supported_archs, response_data)
+        arch_urls = self._fetch_arch_urls(parser, supported_archs, response_data)
         if not arch_urls:
-            print("  错误: 无法获取任何架构的下载URL")
+            logger.error("  错误: 无法获取任何架构的下载URL")
             return False
 
         checksums, success = await self._download_and_verify(
@@ -381,7 +387,7 @@ class PackageUpdater:
             return False
 
         # 更新 PKGBUILD
-        print("  4. 更新 PKGBUILD 版本和校验和...")
+        logger.info("  4. 更新 PKGBUILD 版本和校验和...")
         editor.update_pkgver(new_version)
         editor.update_pkgrel(1)  # 重置 pkgrel 为 1
 
@@ -392,17 +398,13 @@ class PackageUpdater:
             editor.update_arch_checksum(arch, checksums[arch])
 
         editor.save()
-        print("  5. PKGBUILD 已更新")
+        logger.info("  5. PKGBUILD 已更新")
 
-        print(f"包 {package_name} 更新完成!")
+        logger.info("包 %s 更新完成!", package_name)
         return True
 
     async def _calculate_checksum(self, file_path: Path) -> str:
         """计算文件的 SHA512 校验和"""
-        from functools import partial
-
-        from utils.hash import calculate_file_hash
-
         loop = asyncio.get_running_loop()
         return await loop.run_in_executor(
             None,
@@ -428,12 +430,14 @@ class PackageUpdater:
             name for name, config in self.config.packages.items() if not config.enable
         ]
 
-        print(
-            f"开始更新所有包（共 {len(enabled_packages)} 个启用，{len(disabled_packages)} 个禁用）..."
+        logger.info(
+            "开始更新所有包（共 %d 个启用，%d 个禁用）...",
+            len(enabled_packages),
+            len(disabled_packages),
         )
 
         if disabled_packages:
-            print(f"  已跳过禁用的包: {', '.join(disabled_packages)}")
+            logger.info("  已跳过禁用的包: %s", ", ".join(disabled_packages))
 
         # 预检查 PKGBUILD 文件是否存在
         valid_packages = {}
@@ -446,12 +450,13 @@ class PackageUpdater:
                 valid_packages[package_name] = package_config
 
         if missing_pkgbuild_packages:
-            print(
-                f"  已跳过 PKGBUILD 文件不存在的包: {', '.join(missing_pkgbuild_packages)}"
+            logger.info(
+                "  已跳过 PKGBUILD 文件不存在的包: %s",
+                ", ".join(missing_pkgbuild_packages),
             )
 
         if not valid_packages:
-            print("\n没有可更新的包")
+            logger.info("\n没有可更新的包")
             return 0, 0
 
         total_count = len(valid_packages)
@@ -461,8 +466,8 @@ class PackageUpdater:
         results = await asyncio.gather(*tasks, return_exceptions=True)
         success_count = sum(1 for r in results if r is True)
 
-        print()
-        print(f"更新完成: {success_count}/{total_count} 个包更新成功")
+        logger.info("")
+        logger.info("更新完成: %d/%d 个包更新成功", success_count, total_count)
         return success_count, total_count
 
     def _is_package_updatable(
@@ -526,16 +531,16 @@ class PackageUpdater:
 
         # 输出跳过的包
         if invalid_packages:
-            print(f"错误: 以下包不在配置中: {', '.join(invalid_packages)}")
+            logger.error("错误: 以下包不在配置中: %s", ", ".join(invalid_packages))
 
         for reason in skip_reasons:
-            print(f"  跳过: {reason}")
+            logger.info("  跳过: %s", reason)
 
         if not valid_packages:
             return 0, 0
 
         # 并行更新包
-        print(f"开始更新 {len(valid_packages)} 个包...")
+        logger.info("开始更新 %d 个包...", len(valid_packages))
 
         total_count = len(valid_packages)
         tasks = [
@@ -544,14 +549,14 @@ class PackageUpdater:
         results = await asyncio.gather(*tasks, return_exceptions=True)
         success_count = sum(1 for r in results if r is True)
 
-        print()
-        print(f"更新完成: {success_count}/{total_count} 个包更新成功")
+        logger.info("")
+        logger.info("更新完成: %d/%d 个包更新成功", success_count, total_count)
 
         return success_count, total_count
 
     def list_available_packages(self) -> None:
         """列出所有可用的包"""
-        print("可用的包:")
+        logger.info("可用的包:")
         for package_name, package_config in self.config.packages.items():
             status = "启用" if package_config.enable else "禁用"
-            print(f"  - {package_name} [{status}]")
+            logger.info("  - %s [%s]", package_name, status)
