@@ -204,6 +204,22 @@ source_aarch64=("${pkgname}-${CARCH}-${pkgver}.AppImage::https://example.com/app
 install -Dm644 "icon.png" "${pkgdir}/usr/share/icons/hicolor/512x512/apps/${pkgname}.png"
 ```
 
+### 文件名缓存冲突 [必须遵守]
+
+当上游下载 URL 的文件名**不含版本号**时（如 `Trae-linux-x64.tar.gz`、`zen.linux-x86_64.tar.xz`），`makepkg` 在 `SRCDEST` 中会缓存旧文件。版本或内容更新后，文件名不变导致 `makepkg` 复用旧文件，新校验和不匹配，构建失败。
+
+**必须**使用 `::` 别名为文件名添加 `${pkgver}-${pkgrel}`，确保每次更新都使用唯一文件名：
+
+```bash
+# ✓ 别名含版本和 pkgrel（每次更新文件名都不同）
+source_x86_64=("Trae-linux-x64-${pkgver}-${pkgrel}.tar.gz::https://example.com/Trae-linux-x64.tar.gz")
+
+# ✗ 无别名（文件名固定，缓存导致校验失败）
+source_x86_64=('https://example.com/Trae-linux-x64.tar.gz')
+```
+
+**判断标准**：从 URL 提取文件名，如果文件名中不含版本号（如 `1.2.3`、`3.2.29_260528`），则必须添加别名。
+
 `.desktop` 文件中 `Icon=` 字段只写图标名（不含扩展名），系统通过 hicolor 主题自动查找：
 
 ```ini
