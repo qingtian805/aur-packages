@@ -6,6 +6,7 @@ import re
 from typing import Any
 
 from constants.constants import ArchEnum
+
 from .base_parser import BaseParser
 
 logger = logging.getLogger(__name__)

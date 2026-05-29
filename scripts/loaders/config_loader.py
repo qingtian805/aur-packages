@@ -5,9 +5,11 @@ import logging
 import yaml
 from pydantic import BaseModel, ConfigDict, Field
 
+from constants.constants import ArchEnum
+
 logger = logging.getLogger(__name__)
 
-from constants.constants import ArchEnum
+
 
 
 class DownloadSettings(BaseModel):
