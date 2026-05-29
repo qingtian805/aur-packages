@@ -73,11 +73,12 @@ class PKGBUILDEditor:
         self.content = re.sub(pattern, replacement, self.content, flags=re.MULTILINE)
 
     def update_source_url(self, arch: str, new_url: str) -> None:
-        """更新特定架构的 source URL"""
-        pattern = f"^source_{arch}=\\((?:'([^']*)::[^']*'|.*)\\)$"
+        """更新特定架构的 source URL，保留已有的 :: 别名"""
+        # 匹配单引号或双引号包裹的 :: 别名格式
+        pattern = f"""^source_{arch}=\\((?:['"]([^'"]*)::[^'"]*['"]|.*)\\)$"""
         match = re.search(pattern, self.content, flags=re.MULTILINE)
         if match and match.group(1):
-            replacement = f"source_{arch}=('{match.group(1)}::{new_url}')"
+            replacement = f'source_{arch}=("{match.group(1)}::{new_url}")'
         else:
             replacement = f"source_{arch}=('{new_url}')"
         self.content = re.sub(
