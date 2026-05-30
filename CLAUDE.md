@@ -62,7 +62,7 @@ uv run ty check
 
 - **编辑或创建 PKGBUILD 时必须遵守 @docs/packaging-guide.md 中的规范**
 - **修改 `packages/` 中的本地源文件（如 `.sh`、`.desktop`、`.install`）后，必须同步更新 PKGBUILD 中 `sha512sums` 对应的校验和**。本地文件被列入 `source=()` 数组，makepkg 会校验其哈希，修改内容但不更新哈希会导致构建失败
-- **Trae 系列包必须删除 ckg 模块中捆绑的 GCC 运行时库**（`libstdc++.so.6`、`libgcc_s.so.1`）。这些库为 Ubuntu 编译，与 Arch 的 `gcc-libs` ABI 冲突，导致 ckg 进程启动即崩溃（exit code 256），项目索引功能完全失效。删除后 ckg 回退使用系统 `gcc-libs`，因 `libstdc++` 向后兼容而正常工作。其他应用库（`libzmq`、`libsodium`、`libpgm`）保留，因为它们可能是上游定制构建
+- **包运行时/构建问题参见 @docs/troubleshooting.md**，包含已知的捆绑库冲突、缓存问题等及其解决方案
 - **项目使用 uv 统一管理运行环境，禁止显式使用 `python` 命令**
 - 项目使用绝对导入（`from cli.cli import update_main`），而不是相对导入
 - Python 版本要求 >= 3.13
