@@ -18,8 +18,8 @@ install=${pkgname}.install
 source=("trae-cn.sh" "trae-cn.desktop")
 source_x86_64=("Trae_CN-linux-x64-${pkgver}-${pkgrel}.tar.gz::https://lf-cdn.trae.com.cn/obj/trae-com-cn/pkg/app/releases/stable/${pkgver}/linux/Trae_CN-linux-x64.tar.gz")
 source_aarch64=("Trae_CN-linux-arm64-${pkgver}-${pkgrel}.tar.gz::https://lf-cdn.trae.com.cn/obj/trae-com-cn/pkg/app/releases/stable/${pkgver}/linux/Trae_CN-linux-arm64.tar.gz")
-sha512sums=('SKIP'
-            'SKIP')
+sha512sums=('4f306a3f9b6ba3f7dea613face5d17a76e00f26eb3f37f712ece73d7f4071fb680cc43d601cf3dc38ab4510c351a87fed0d69d632884c15147d0a42e1b6c87f5'
+            'b83e27fb8786974b4773cd12d786ca078229786d83d222db60ac812fdda3f475040151064842ee0f6783ffa133db0276c76c5ac927cfa930d366d65519126bac')
 sha512sums_x86_64=('SKIP')
 sha512sums_aarch64=('SKIP')
 
