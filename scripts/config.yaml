@@ -91,6 +91,23 @@ packages:
       - x86_64
       - aarch64
 
+  # trae-cn 是国内版（https://www.trae.cn/），与 trae/trae-sg/trae-us（国际版，https://www.trae.ai/）是不同的产品
+  # 国际版的 CDN 变体（trae-sg/trae-us）共享同一个 API 和版本号，国内版使用独立的 API 和版本号
+  # 注意：trae 和 trae-cn 的 tarball 内部目录结构完全相同，仅二进制/补全文件名不同（trae vs trae-cn）
+  trae-cn:
+    name: trae-cn
+    source: trae
+    source_url: "https://www.trae.cn/"
+    fetch_url: "https://api.trae.cn/icube/api/v1/native/version/trae/cn/latest"
+    upstream: "ByteDance/Trae"
+    parser: TraeParser_CN
+    pkgbuild: "packages/trae-cn/PKGBUILD"
+    update_source_url: true
+    enable: true
+    arch:
+      - x86_64
+      - aarch64
+
   zen-browser:
     name: zen-browser
     source: zen-browser

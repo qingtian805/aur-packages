@@ -2,7 +2,7 @@
 
 pkgname=trae
 pkgver=2.3.30128
-pkgrel=2
+pkgrel=3
 pkgdesc="AI-powered IDE by ByteDance"
 arch=('x86_64' 'aarch64')
 url="https://www.trae.cn/"
@@ -56,4 +56,7 @@ package() {
 
     # Remove unnecessary files
     rm -rf "${pkgdir}/opt/trae/node_modules"
+    find "${pkgdir}/opt/trae" -name "*.asc" -delete
+    find "${pkgdir}/opt/trae" -name "*.bat" -delete
+    find "${pkgdir}/opt/trae" -type d -name "rush-logs" -exec rm -rf {} +
 }

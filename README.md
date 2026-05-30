@@ -38,9 +38,10 @@ uv run main.py --list       # 列出所有包
 |------|------|
 | `linuxqq-nt` | QQ Linux |
 | `navicat17-premium-zh-cn` | Navicat Premium 中文版 |
-| `trae` | Trae AI IDE（中国 CDN） |
-| `trae-sg` | Trae AI IDE（新加坡 CDN） |
-| `trae-us` | Trae AI IDE（美国 CDN） |
+| `trae` | Trae AI IDE 国际版（中国 CDN） |
+| `trae-sg` | Trae AI IDE 国际版（新加坡 CDN） |
+| `trae-us` | Trae AI IDE 国际版（美国 CDN） |
+| `trae-cn` | Trae AI IDE 国内版（独立产品，非国际版 CDN 变体） |
 
 ## 开发
 

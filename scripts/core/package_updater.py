@@ -53,6 +53,7 @@ class PackageUpdater:
             ParserEnum.TRAE.value: TraeParser(),
             ParserEnum.TRAE_SG.value: TraeParser(region=TraeRegion.SG),
             ParserEnum.TRAE_US.value: TraeParser(region=TraeRegion.US),
+            ParserEnum.TRAE_CN.value: TraeParser(region=TraeRegion.CN),
             ParserEnum.ZEN.value: ZenParser(),
         }
 
