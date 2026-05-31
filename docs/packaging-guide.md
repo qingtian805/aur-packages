@@ -72,7 +72,7 @@ pkgdesc="Trae - AI-powered IDE by ByteDance"
 | `depends` | 运行时依赖 |
 | `makedepends` | 构建时依赖 |
 | `checkdepends` | 测试时依赖 |
-| `optdepends` | 可选功能依赖，应附简短说明 |
+| `optdepends` | 可选功能依赖，应附简短说明，让用户明确安装后获得什么 |
 
 关键规则：
 
@@ -80,6 +80,15 @@ pkgdesc="Trae - AI-powered IDE by ByteDance"
 - `makedepends` 中 `base-devel` 视为已安装，不要包含其子包
 - `depends` 不应重复出现在 `makedepends` 中（`depends` 隐含在构建时也需要）
 - 可指定版本约束：`depends=('foobar>=1.8.0')`，需要多个约束时重复声明
+- `optdepends` 应列出提供**实际可用功能**的具体包，而非仅提供框架/运行时的包：
+
+```bash
+# ✓ 列出具体词典包（安装后即可用）
+optdepends=('hunspell-en_US: English spell checking')
+
+# ✗ 仅列出框架包（安装后无词典数据，用户看不到功能）
+optdepends=('hunspell: Spell checking')
+```
 - 若依赖名为库文件（如 `libfoobar.so`），makepkg 会自动检测并附加 soname 版本
 
 依赖确认方式：
@@ -108,6 +117,15 @@ Electron 包依赖声明应覆盖主二进制链接的系统库：
 # Electron 主二进制链接的系统库
 depends=('nss' 'alsa-lib' 'gtk3' 'at-spi2-core' 'libsecret' 'libxkbfile' 'zeromq')
 ```
+
+### 运行时加载依赖 [推荐实践]
+
+部分应用（Firefox 系浏览器、基于 GStreamer/FFmpeg 插件框架的应用）通过 `dlopen` 在运行时加载媒体编解码器，**不出现在 `ldd` 输出中**。这些依赖需通过以下方式识别：
+
+1. 测试实际功能（如视频播放、音频解码），观察缺失库的报错
+2. 对比 AUR 官方同类包的 `depends` 列表，排查差异
+
+修改依赖时，应与 AUR 官方同类包（如 `firefox`、`zen-browser-bin`）交叉验证。官方包通常经过社区长期维护，其依赖列表是可靠的参考基线。如需偏离官方包的依赖声明（如移除 `systemd-libs`、替换 `ffmpeg4.4` 为 `ffmpeg`），必须提供 `namcap`/`find-libdeps` 的审计证据。
 
 ### 虚拟包 [推荐实践]
 
@@ -143,6 +161,20 @@ depends=('libpulse')
 - 优先使用 `sha256sums` 或 `b2sums`
 - 不使用 `SKIP`，除非源文件动态变化无法固定（如 VCS 源）
 
+### 滚动发布源 [推荐实践]
+
+Nightly/twilight 等滚动发布版本使用固定 URL（如 `twilight-1` tag），每次上游更新覆盖同一文件。虽然文件名不变，但**每个特定版本的 tarball 内容是固定的**——仍必须固定校验和，不能用 `SKIP`。
+
+这与 VCS 源（`git+https://...`，每次 pull 内容不同）是本质区别。滚动发布源的校验和由自动化工具在版本更新时同步更新。
+
+```bash
+# ✓ 固定校验和（每次版本更新时由工具同步）
+b2sums_x86_64=('a1b2c3...')
+
+# ✗ 使用 SKIP（移除完整性验证，二进制下载无法防篡改）
+b2sums_x86_64=('SKIP')
+```
+
 ## 代码质量 [推荐实践]
 
 提交前使用 namcap 检查：
@@ -153,6 +185,26 @@ namcap *.pkg.tar.zst
 ```
 
 可检测缺失/多余依赖、不规范文件路径等问题。
+
+## 变量约定 [项目约定]
+
+当 `pkgname` 与上游二进制/目录名不同时（如 `pkgname=linuxqq-nt` 但上游使用 `linuxqq`），定义私有变量存放上游名称，避免全文硬编码：
+
+```bash
+_pkgname=linuxqq
+pkgname=${_pkgname}-nt
+```
+
+对重复出现的路径和 URL，同样提取为变量：
+
+```bash
+_installdir="/opt/${pkgname}"           # 安装目标路径
+_gh='https://github.com/org/repo/releases/download/v1'  # 下载基址
+```
+
+**判断标准**：同一字面字符串出现 3 次以上时，应提取为变量。这减少更新时的遗漏风险，也使 `package()` 函数更易读。
+
+注意：`_pkgname` 等私有变量会出现在 `makepkg --printsrcinfo` 的输出中（作为 `source` 文件名的一部分），确保其命名不会与 makepkg 内部变量冲突。
 
 ## 文件操作 [推荐实践]
 
@@ -294,6 +346,26 @@ chmod 4755 "${pkgdir}/opt/${pkgname}/chrome-sandbox"
 
 即使 `cp -a` 保留了原始权限，仍显式设置作为防御性措施。现代 Chromium/Electron 可能使用 user namespace sandbox 替代 SUID。
 
+**模式选择**：
+
+- **无条件 chmod**（推荐用于稳定发布）：文件缺失时 makepkg 立即报错，便于排查上游变更：
+
+```bash
+chmod 4755 "${pkgdir}/opt/${pkgname}/chrome-sandbox"
+```
+
+- **防御性检查**（用于 nightly/twilight 等上游结构可能变化的场景）：文件不存在时输出警告而非静默跳过，避免运行时功能降级：
+
+```bash
+if [[ -f "${pkgdir}/opt/${pkgname}/chrome-sandbox" ]]; then
+    chmod 4755 "${pkgdir}/opt/${pkgname}/chrome-sandbox"
+else
+    warning "SUID binary 'chrome-sandbox' not found; skipping"
+fi
+```
+
+避免使用 `[[ -f ... ]] && chmod 4755 ...` 短路形式——文件缺失时完全静默，上游移除或重命名 SUID 二进制后用户无法诊断硬件加速降级的原因。
+
 ### 构建选项 [项目约定]
 
 Electron 预编译二进制包使用 `!strip` 避免破坏符号表：
@@ -316,6 +388,16 @@ exec /opt/${pkgname}/${binary} "${USER_FLAGS[@]}" "$@"
 ```
 
 注意：参数展开中使用 `$HOME` 而非 `~`，因为 `~` 在引号内不会被展开。
+
+**路径耦合风险**：启动脚本中的二进制路径（如 `/opt/${pkgname}/${binary}`）与 PKGBUILD 的 `_installdir` 存在隐式耦合。如果 PKGBUILD 修改了安装路径但未同步更新 launcher 脚本，构建不会报错但运行时静默失败（`No such file or directory`）。
+
+建议在 PKGBUILD 中添加注释标注耦合关系：
+
+```bash
+# NOTE: launcher.sh hardcodes /opt/${pkgname}/${binary}
+# If _installdir changes, the launcher script must also be updated.
+install -Dm755 "${srcdir}/launcher.sh" "${pkgdir}/usr/bin/${pkgname}"
+```
 
 ### 完整示例
 
