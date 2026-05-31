@@ -4,14 +4,13 @@
 _pkgname=zen-browser-twilight
 pkgname=${_pkgname}-bin
 pkgver=1.21t
-pkgrel=9
+pkgrel=10
 pkgdesc='Zen Browser (Twilight Build) - Performance oriented Firefox-based web browser'
 arch=('x86_64' 'aarch64')
 url='https://zen-browser.app/'
 license=('MPL-2.0')
 depends=(
-    'dbus'
-    'ffmpeg'
+    'dbus-glib'
     'gtk3'
     'libxt'
     'mime-types'
@@ -20,11 +19,12 @@ depends=(
 )
 optdepends=(
     'alsa-lib: ALSA audio backend'
+    'ffmpeg: H264/AAC/MP3 decoding'
     'pulse-native-provider: PulseAudio/PipeWire audio backend'
     'libnotify: Desktop notification support'
     'networkmanager: Location detection via WiFi networks'
     'speech-dispatcher: Text-to-Speech'
-    'hunspell: Spell checking'
+    'hunspell-en_US: Spell checking, American English'
     'xdg-desktop-portal: Screen sharing under Wayland'
 )
 provides=("zen-browser=$pkgver")
