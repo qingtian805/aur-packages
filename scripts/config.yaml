@@ -2,7 +2,7 @@
 
 # 基础设置
 settings:
-  # 全局默认哈希算法（支持 sha256、sha512、b2）
+  # 全局默认哈希算法（支持 b2、sha512、sha256）
   hash_algorithm: b2
   # 下载设置
   download:

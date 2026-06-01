@@ -46,6 +46,6 @@ export LD_PRELOAD="/usr/lib/libsystemd.so.0${LD_PRELOAD:+:$LD_PRELOAD}"
 
 ### 修改本地源文件后 hash 不匹配
 
-本地源文件（`.sh`、`.desktop`、`.install`）列入 `source=()` 数组，makepkg 会校验其哈希。修改文件内容但未更新 PKGBUILD 中的 `sha512sums` 会导致构建失败。
+本地源文件（`.sh`、`.desktop`、`.install`）列入 `source=()` 数组，makepkg 会校验其哈希。修改文件内容但未更新 PKGBUILD 中对应的校验和（如 `b2sums`、`sha512sums`）会导致构建失败。
 
 **处理**：修改本地源文件后必须同步更新 PKGBUILD 中对应的校验和。

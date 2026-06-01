@@ -1,5 +1,7 @@
 # B2 (BLAKE2b) 哈希算法支持设计
 
+> **状态**: 已实施完成。全局默认已从 sha512 迁移至 b2。本文档保留为历史设计记录。
+
 ## 背景
 
 项目 `zen-browser-twilight-bin` 包的 PKGBUILD 使用 `b2sums`（BLAKE2b），但自动更新工具硬编码 SHA512，导致该包无法被正确更新。
