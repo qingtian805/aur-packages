@@ -4,6 +4,7 @@ from pathlib import Path
 
 import pytest
 
+from constants.constants import HashAlgorithmEnum
 from updater.pkgbuild_editor import PKGBUILDEditor
 
 PKGBUILD_TEMPLATE: str = """\
@@ -18,6 +19,20 @@ source_aarch64=('https://example.com/test-1.0.0-aarch64.tar.gz')
 sha512sums=('SKIP' 'SKIP')
 sha512sums_x86_64=('aaa111')
 sha512sums_aarch64=('bbb222')
+"""
+
+PKGBUILD_B2: str = """\
+# Maintainer: test <test@test.com>
+pkgname=test-pkg
+pkgver=1.0.0
+pkgrel=1
+arch=('x86_64' 'aarch64')
+source=("test.sh" "test.desktop")
+source_x86_64=('https://example.com/test-1.0.0-x86_64.tar.gz')
+source_aarch64=('https://example.com/test-1.0.0-aarch64.tar.gz')
+b2sums=('c1c1c1' 'd2d2d2')
+b2sums_x86_64=('eee333')
+b2sums_aarch64=('fff444')
 """
 
 PKGBUILD_WITH_EPOCH: str = """\
@@ -65,6 +80,29 @@ class TestPKGBUILDEditorGetters:
         editor = PKGBUILDEditor(pkgbuild)
         assert editor.get_checksum() == "SKIP"
 
+    def test_get_checksum_b2(self, tmp_path: Path) -> None:
+        """获取 b2sums 校验和"""
+        p = tmp_path / "PKGBUILD"
+        p.write_text(PKGBUILD_B2, encoding="utf-8")
+        editor = PKGBUILDEditor(p)
+        b2 = HashAlgorithmEnum.B2.value
+        assert editor.get_checksum("x86_64", b2) == "eee333"
+        assert editor.get_checksum("aarch64", b2) == "fff444"
+
+    def test_get_checksum_b2_no_arch(self, tmp_path: Path) -> None:
+        """获取 b2sums 无架构校验和"""
+        p = tmp_path / "PKGBUILD"
+        p.write_text(PKGBUILD_B2, encoding="utf-8")
+        editor = PKGBUILDEditor(p)
+        assert (
+            editor.get_checksum(hash_algorithm=HashAlgorithmEnum.B2.value) == "c1c1c1"
+        )
+
+    def test_get_checksum_algorithm_not_found(self, pkgbuild) -> None:
+        """PKGBUILD 中不存在该算法的校验和时返回空字符串"""
+        editor = PKGBUILDEditor(pkgbuild)
+        assert editor.get_checksum("x86_64", HashAlgorithmEnum.B2.value) == ""
+
 
 class TestPKGBUILDEditorUpdate:
     def test_update_pkgver(self, pkgbuild) -> None:
@@ -82,9 +120,20 @@ class TestPKGBUILDEditorUpdate:
         editor.update_arch_checksum("x86_64", "newhash123")
         assert editor.get_checksum("x86_64") == "newhash123"
 
+    def test_update_arch_checksum_b2(self, tmp_path: Path) -> None:
+        """更新 b2sums 架构校验和"""
+        p = tmp_path / "PKGBUILD"
+        p.write_text(PKGBUILD_B2, encoding="utf-8")
+        editor = PKGBUILDEditor(p)
+        b2 = HashAlgorithmEnum.B2.value
+        editor.update_arch_checksum("x86_64", "new_b2_hash", b2)
+        assert editor.get_checksum("x86_64", b2) == "new_b2_hash"
+
     def test_update_source_url(self, pkgbuild) -> None:
         editor = PKGBUILDEditor(pkgbuild)
-        editor.update_source_url("x86_64", "https://example.com/test-2.0.0-x86_64.tar.gz")
+        editor.update_source_url(
+            "x86_64", "https://example.com/test-2.0.0-x86_64.tar.gz"
+        )
         assert "test-2.0.0-x86_64" in editor.content
 
     def test_save_and_reload(self, pkgbuild) -> None:
@@ -145,12 +194,6 @@ class TestPKGBUILDEditorEdgeCases:
         p.write_text("pkgname=test\npkgver=1.0\n", encoding="utf-8")
         editor = PKGBUILDEditor(p)
         assert editor.get_pkgrel() == 1
-
-    def test_update_sha512sums(self, pkgbuild) -> None:
-        """更新通用 sha512sums 字段"""
-        editor = PKGBUILDEditor(pkgbuild)
-        editor.update_sha512sums("new_generic_hash")
-        assert editor.get_checksum() == "new_generic_hash"
 
     def test_source_url_alias_preserved(self, tmp_path: Path) -> None:
         """更新 source URL 时保留 :: 别名"""

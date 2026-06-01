@@ -19,6 +19,7 @@ class HashAlgorithmEnum(Enum):
 
     SHA256 = "sha256"
     SHA512 = "sha512"
+    B2 = "b2"
 
 
 class ParserEnum(Enum):

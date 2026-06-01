@@ -134,6 +134,7 @@ class PackageUpdater:
         package_name: str,
         new_version: str,
         arch_urls: dict[str, str],
+        hash_algorithm: str = HashAlgorithmEnum.SHA512.value,
         verify_only: bool = False,
     ) -> tuple[dict[str, str], bool]:
         """
@@ -178,13 +179,15 @@ class PackageUpdater:
                     failed_archs.append(arch)
                 continue
 
-            checksum = await self._calculate_checksum(result.file_path)
+            checksum = await self._calculate_checksum(result.file_path, hash_algorithm)
             checksums[arch] = checksum
             logger.info("  %s 架构哈希验证通过: %s", arch, checksum)
 
         if not verify_only and (failed_archs or not checksums):
             if failed_archs:
-                logger.error("  错误: %d 个架构下载失败: %s", len(failed_archs), failed_archs)
+                logger.error(
+                    "  错误: %d 个架构下载失败: %s", len(failed_archs), failed_archs
+                )
             if not checksums:
                 logger.error("  错误: 没有成功下载任何架构的文件")
             return {}, False
@@ -234,6 +237,11 @@ class PackageUpdater:
             # 获取包支持的架构
             supported_archs = package_config.get_supported_archs()
 
+            # 获取生效的哈希算法（包级覆盖 > 全局默认）
+            hash_algorithm = package_config.get_effective_hash_algorithm(
+                self.config.settings.hash_algorithm
+            )
+
             # 版本比较
             version_comparison = compare_versions(new_version, current_version)
 
@@ -247,6 +255,7 @@ class PackageUpdater:
                     parser,
                     supported_archs,
                     response_data,
+                    hash_algorithm,
                 )
 
             # 版本更新流程
@@ -259,6 +268,7 @@ class PackageUpdater:
                 supported_archs,
                 response_data,
                 package_config,
+                hash_algorithm,
             )
 
         except Exception:
@@ -274,6 +284,7 @@ class PackageUpdater:
         parser: BaseParser,
         supported_archs: list[ArchEnum],
         response_data: str,
+        hash_algorithm: str = HashAlgorithmEnum.SHA512.value,
     ) -> bool:
         """
         处理版本不更新的情况（当前版本 >= 新版本）
@@ -284,19 +295,19 @@ class PackageUpdater:
         """
         if version_comparison < 0:
             # 当前版本 > 新版本：版本降级
-            logger.info("  跳过更新: 新版本 %s 低于当前版本 %s", new_version, current_version)
+            logger.info(
+                "  跳过更新: 新版本 %s 低于当前版本 %s", new_version, current_version
+            )
             logger.info("  说明: 当前包版本较新，无需降级")
             logger.info("  注意: 仍将下载并验证哈希数据...")
 
-            arch_urls = self._fetch_arch_urls(
-                parser, supported_archs, response_data
-            )
+            arch_urls = self._fetch_arch_urls(parser, supported_archs, response_data)
             if not arch_urls:
                 logger.error("  错误: 无法获取任何架构的下载URL")
                 return False
 
             checksums, _ = await self._download_and_verify(
-                package_name, new_version, arch_urls, verify_only=True
+                package_name, new_version, arch_urls, hash_algorithm, verify_only=True
             )
 
             logger.info("  包 %s 验证完成（未更新 PKGBUILD）", package_name)
@@ -313,7 +324,7 @@ class PackageUpdater:
 
         current_checksums = {}
         for arch in supported_archs:
-            current_checksum = editor.get_checksum(arch.value)
+            current_checksum = editor.get_checksum(arch.value, hash_algorithm)
             if current_checksum:
                 current_checksums[arch.value] = current_checksum
             else:
@@ -326,7 +337,7 @@ class PackageUpdater:
             return False
 
         new_checksums, success = await self._download_and_verify(
-            package_name, new_version, arch_urls
+            package_name, new_version, arch_urls, hash_algorithm
         )
         if not success:
             return False
@@ -355,7 +366,7 @@ class PackageUpdater:
 
         # 更新校验和（不更新 source URL，因为版本未变）
         for arch, checksum in new_checksums.items():
-            editor.update_arch_checksum(arch, checksum)
+            editor.update_arch_checksum(arch, checksum, hash_algorithm)
 
         editor.save()
         logger.info("  包 %s 的 pkgrel 已更新（版本未变但哈希已变）", package_name)
@@ -371,6 +382,7 @@ class PackageUpdater:
         supported_archs: list[ArchEnum],
         response_data: str,
         package_config: PackageConfig,
+        hash_algorithm: str = HashAlgorithmEnum.SHA512.value,
     ) -> bool:
         """处理版本更新流程"""
         logger.info("  3. 下载文件并计算校验和...")
@@ -382,7 +394,7 @@ class PackageUpdater:
             return False
 
         checksums, success = await self._download_and_verify(
-            package_name, new_version, arch_urls
+            package_name, new_version, arch_urls, hash_algorithm
         )
         if not success:
             return False
@@ -396,7 +408,7 @@ class PackageUpdater:
         for arch, url in arch_urls.items():
             if package_config.update_source_url:
                 editor.update_source_url(arch, url)
-            editor.update_arch_checksum(arch, checksums[arch])
+            editor.update_arch_checksum(arch, checksums[arch], hash_algorithm)
 
         editor.save()
         logger.info("  5. PKGBUILD 已更新")
@@ -404,12 +416,12 @@ class PackageUpdater:
         logger.info("包 %s 更新完成!", package_name)
         return True
 
-    async def _calculate_checksum(self, file_path: Path) -> str:
-        """计算文件的 SHA512 校验和"""
+    async def _calculate_checksum(self, file_path: Path, hash_algorithm: str) -> str:
+        """计算文件校验和"""
         loop = asyncio.get_running_loop()
         return await loop.run_in_executor(
             None,
-            partial(calculate_file_hash, file_path, HashAlgorithmEnum.SHA512.value),
+            partial(calculate_file_hash, file_path, hash_algorithm),
         )
 
     async def update_all_packages(self) -> tuple[int, int]:

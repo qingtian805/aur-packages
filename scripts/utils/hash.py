@@ -17,6 +17,7 @@ class _Hash(Protocol):
 _HASH_BUILDERS: dict[str, Callable[[], _Hash]] = {
     HashAlgorithmEnum.SHA256.value: hashlib.sha256,
     HashAlgorithmEnum.SHA512.value: hashlib.sha512,
+    HashAlgorithmEnum.B2.value: hashlib.blake2b,
 }
 
 
@@ -56,9 +57,7 @@ def calculate_multiple_hashes(
     if algorithms is None:
         algorithms = [HashAlgorithmEnum.SHA256.value, HashAlgorithmEnum.SHA512.value]
 
-    hashers: list[_Hash] = [
-        _HASH_BUILDERS[alg.lower()]() for alg in algorithms
-    ]
+    hashers: list[_Hash] = [_HASH_BUILDERS[alg.lower()]() for alg in algorithms]
 
     with file_path.open("rb") as f:
         for chunk in iter(lambda: f.read(4096), b""):

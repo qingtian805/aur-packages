@@ -22,6 +22,7 @@ class TestPackageConfig:
         assert config.enable is True
         assert config.urls == {}
         assert config.arch == []
+        assert config.hash_algorithm is None
 
     def test_urls_field(self) -> None:
         config = PackageConfig(
@@ -70,6 +71,31 @@ class TestPackageConfig:
         )
         assert config.name == "test"
 
+    def test_get_effective_hash_algorithm_default(self) -> None:
+        """hash_algorithm 为 None 时使用全局默认"""
+        config = PackageConfig(
+            name="test",
+            source="test",
+            fetch_url="https://example.com",
+            upstream="test/test",
+            parser="TestParser",
+            pkgbuild="packages/test/PKGBUILD",
+        )
+        assert config.get_effective_hash_algorithm("sha512") == "sha512"
+
+    def test_get_effective_hash_algorithm_override(self) -> None:
+        """hash_algorithm 显式设置时覆盖全局默认"""
+        config = PackageConfig(
+            name="test",
+            source="test",
+            fetch_url="https://example.com",
+            upstream="test/test",
+            parser="TestParser",
+            pkgbuild="packages/test/PKGBUILD",
+            hash_algorithm="b2",
+        )
+        assert config.get_effective_hash_algorithm("sha512") == "b2"
+
 
 class TestConfigLoader:
     def test_load_from_yaml(self) -> None:
@@ -84,6 +110,25 @@ class TestConfigLoader:
         navicat = loader.packages["navicat"]
         assert "x86_64" in navicat.urls
         assert "aarch64" in navicat.urls
+
+    def test_settings_hash_algorithm_default(self) -> None:
+        """全局默认 hash_algorithm 为 sha512"""
+        loader = ConfigLoader.load_from_yaml()
+        assert loader.settings.hash_algorithm == "sha512"
+
+    def test_zen_browser_b2_override(self) -> None:
+        """zen-browser 包级覆盖为 b2"""
+        loader = ConfigLoader.load_from_yaml()
+        zen = loader.packages["zen-browser"]
+        assert zen.hash_algorithm == "b2"
+        assert zen.get_effective_hash_algorithm("sha512") == "b2"
+
+    def test_qq_default_hash_algorithm(self) -> None:
+        """qq 包未设置 hash_algorithm，使用全局默认"""
+        loader = ConfigLoader.load_from_yaml()
+        qq = loader.packages["qq"]
+        assert qq.hash_algorithm is None
+        assert qq.get_effective_hash_algorithm("sha512") == "sha512"
 
     def test_load_empty_yaml(self, tmp_path: Path) -> None:
         """空 YAML 文件抛出 ValueError"""

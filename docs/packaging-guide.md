@@ -231,7 +231,7 @@ source=("${pkgname}-${pkgver}.tar.gz::https://github.com/user/repo/archive/v${pk
 
 - `.install` 文件由 makepkg 自动识别，不应加入 `source` 数组
 - `.sig`、`.sign`、`.asc` 后缀的文件被自动识别为 PGP 签名
-- 架构特定的源使用 `source_x86_64=()` 等后缀，需对应 `sha256sums_x86_64=()` 等校验和数组
+- 架构特定的源使用 `source_x86_64=()` 等后缀，需对应 `<algo>sums_x86_64=()` 等校验和数组（如 `b2sums_x86_64=()`、`sha512sums_x86_64=()`）
 - URL 和文件名中的架构标识应使用 `${CARCH}` 替代硬编码值（`namcap` 会警告 `Reference to x86_64 should be changed to $CARCH`）：
 
 **但是**，`source_<arch>` 数组中**不能使用 `${CARCH}`**。`makepkg --printsrcinfo` 在生成 `.SRCINFO` 时会就地展开 `${CARCH}`，如果 CI 运行在 x86_64 上，aarch64 的 source URL 也会被解析为 x86_64，导致 aarch64 用户下载到错误的文件。

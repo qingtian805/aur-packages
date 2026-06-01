@@ -10,8 +10,6 @@ from constants.constants import ArchEnum
 logger = logging.getLogger(__name__)
 
 
-
-
 class DownloadSettings(BaseModel):
     """下载配置"""
 
@@ -29,6 +27,7 @@ class Settings(BaseModel):
 
     model_config = ConfigDict(extra="ignore")
 
+    hash_algorithm: str = "sha512"
     download: DownloadSettings = Field(default_factory=DownloadSettings)
 
 
@@ -47,6 +46,7 @@ class PackageConfig(BaseModel):
     update_source_url: bool = Field(default=True)
     enable: bool = Field(default=True)
     urls: dict[str, str] = Field(default_factory=dict)
+    hash_algorithm: str | None = None
 
     def get_supported_archs(self) -> list[ArchEnum]:
         """将字符串架构列表转换为 ArchEnum 列表"""
@@ -59,6 +59,10 @@ class PackageConfig(BaseModel):
             else:
                 logger.warning("未知的架构标识: %s", arch_str)
         return supported_archs
+
+    def get_effective_hash_algorithm(self, default: str) -> str:
+        """获取生效的哈希算法（包级覆盖 > 全局默认）"""
+        return self.hash_algorithm if self.hash_algorithm else default
 
 
 class ConfigLoader(BaseModel):

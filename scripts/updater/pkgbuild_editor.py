@@ -17,7 +17,9 @@ class PKGBUILDEditor:
     def __enter__(self) -> "PKGBUILDEditor":
         return self
 
-    def __exit__(self, exc_type: type | None, exc_val: BaseException | None, exc_tb: object) -> None:
+    def __exit__(
+        self, exc_type: type | None, exc_val: BaseException | None, exc_tb: object
+    ) -> None:
         if exc_type is None:
             self.save()
 
@@ -60,12 +62,6 @@ class PKGBUILDEditor:
             self.content = re.sub(
                 pattern, replacement, self.content, flags=re.MULTILINE
             )
-
-    def update_sha512sums(self, new_checksum: str) -> None:
-        """更新通用 sha512sums 字段"""
-        pattern = r"^sha512sums=\(.*\)$"
-        replacement = f"sha512sums=('{new_checksum}')"
-        self.content = re.sub(pattern, replacement, self.content, flags=re.MULTILINE)
 
     def update_arch_checksum(
         self,
@@ -120,12 +116,16 @@ class PKGBUILDEditor:
         except ValueError:
             return None
 
-    def get_checksum(self, arch: str | None = None) -> str:
+    def get_checksum(
+        self,
+        arch: str | None = None,
+        hash_algorithm: str = HashAlgorithmEnum.SHA512.value,
+    ) -> str:
         """获取当前校验和值"""
         if arch:
-            pattern = f"^sha512sums_{arch}=\\((?:'([^']*)'.*)?\\)$"
+            pattern = f"^{hash_algorithm}sums_{arch}=\\((?:'([^']*)'.*)?\\)$"
         else:
-            pattern = r"^sha512sums=\((?:'([^']*)'.*)?\)$"
+            pattern = f"^{hash_algorithm}sums=\\((?:'([^']*)'.*)?\\)$"
 
         match = re.search(pattern, self.content, flags=re.MULTILINE)
         return match.group(1) if match else ""
