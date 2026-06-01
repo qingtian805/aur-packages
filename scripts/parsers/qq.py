@@ -35,7 +35,9 @@ class QQParser(BaseParser):
             case ArchEnum.AARCH64.value:
                 return result.get("armDownloadUrl", {}).get("deb")
             case ArchEnum.LOONG64.value:
-                loongarch_url: str | dict[str, str] | None = result.get("loongarchDownloadUrl")
+                loongarch_url: str | dict[str, str] | None = result.get(
+                    "loongarchDownloadUrl"
+                )
                 if isinstance(loongarch_url, dict):
                     return loongarch_url.get("deb")
                 return loongarch_url
@@ -76,7 +78,9 @@ class QQParser(BaseParser):
 
         # 交叉验证：API 版本必须与 URL 基础版本一致
         if url_base_version != api_version:
-            logger.warning("QQ 版本不匹配: API=%s, URL=%s", api_version, url_base_version)
+            logger.warning(
+                "QQ 版本不匹配: API=%s, URL=%s", api_version, url_base_version
+            )
             return None
 
         return f"{api_version}_{build_number}"

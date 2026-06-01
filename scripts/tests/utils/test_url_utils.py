@@ -9,24 +9,25 @@ from utils.url_utils import (
 
 class TestExtractFilenameFromUrl:
     def test_simple_url(self) -> None:
-        assert extract_filename_from_url(
-            "https://example.com/file.deb"
-        ) == "file.deb"
+        assert extract_filename_from_url("https://example.com/file.deb") == "file.deb"
 
     def test_query_params(self) -> None:
-        assert extract_filename_from_url(
-            "https://example.com/file.deb?v=1&k=2"
-        ) == "file.deb"
+        assert (
+            extract_filename_from_url("https://example.com/file.deb?v=1&k=2")
+            == "file.deb"
+        )
 
     def test_fragment(self) -> None:
-        assert extract_filename_from_url(
-            "https://example.com/file.deb#section"
-        ) == "file.deb"
+        assert (
+            extract_filename_from_url("https://example.com/file.deb#section")
+            == "file.deb"
+        )
 
     def test_encoded_spaces(self) -> None:
-        assert extract_filename_from_url(
-            "https://example.com/Trae%20CN-linux-x64.tar.gz"
-        ) == "Trae%20CN-linux-x64.tar.gz"
+        assert (
+            extract_filename_from_url("https://example.com/Trae%20CN-linux-x64.tar.gz")
+            == "Trae%20CN-linux-x64.tar.gz"
+        )
 
 
 class TestExtractExtensionFromUrl:

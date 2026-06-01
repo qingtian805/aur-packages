@@ -86,9 +86,7 @@ class Downloader:
             file_path.parent.mkdir(parents=True, exist_ok=True)
 
         # 写入 aria2c input file
-        with tempfile.NamedTemporaryFile(
-            mode="w", suffix=".txt", delete=False
-        ) as f:
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".txt", delete=False) as f:
             for _arch, (url, file_path) in downloads.items():
                 f.write(f"{url}\n")
                 f.write(f"  dir={file_path.parent}\n")
@@ -110,7 +108,9 @@ class Downloader:
             for arch, (url, file_path) in downloads.items():
                 if file_path.exists():
                     results[arch] = DownloadResult(
-                        arch=arch, success=True, file_path=file_path,
+                        arch=arch,
+                        success=True,
+                        file_path=file_path,
                     )
                 else:
                     # 清理 .aria2 控制文件
@@ -119,7 +119,9 @@ class Downloader:
                         control_file.unlink()
 
                     results[arch] = DownloadResult(
-                        arch=arch, success=False, error=f"{url} -> download failed",
+                        arch=arch,
+                        success=False,
+                        error=f"{url} -> download failed",
                     )
 
             return results

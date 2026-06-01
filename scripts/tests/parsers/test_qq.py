@@ -1,6 +1,5 @@
 """QQParser 单元测试"""
 
-
 from constants.constants import ArchEnum
 from parsers.qq import QQParser
 
@@ -54,7 +53,7 @@ class TestQQParseVersion:
     def test_malformed_json_in_params(self) -> None:
         """能匹配 var params 但内容不是合法 JSON 时返回 None"""
         parser = QQParser()
-        js = 'var params = {invalid json not parseable};'
+        js = "var params = {invalid json not parseable};"
         assert parser.parse_version(js) is None
 
 

@@ -27,9 +27,7 @@ class ZenParser(BaseParser):
     API 端点: https://api.github.com/repos/zen-browser/desktop/releases/tags/twilight-1
     """
 
-    VERSION_PATTERN: re.Pattern[str] = re.compile(
-        r"(\d+\.\d+[a-z]?)"
-    )
+    VERSION_PATTERN: re.Pattern[str] = re.compile(r"(\d+\.\d+[a-z]?)")
 
     def parse_version(self, response_data: str | Any) -> str | None:
         """从 GitHub Release 的 name 字段提取版本号
@@ -53,7 +51,9 @@ class ZenParser(BaseParser):
 
         match: re.Match[str] | None = self.VERSION_PATTERN.search(release_name)
         if not match:
-            logger.warning("Zen Browser: 无法从 release name 提取版本: %s", release_name)
+            logger.warning(
+                "Zen Browser: 无法从 release name 提取版本: %s", release_name
+            )
             return None
 
         return match.group(1)
@@ -78,5 +78,7 @@ class ZenParser(BaseParser):
             if asset.get("name") == target_asset_name:
                 return asset.get("browser_download_url")
 
-        logger.warning("Zen Browser: 未找到 %s 架构的 asset: %s", arch_value, target_asset_name)
+        logger.warning(
+            "Zen Browser: 未找到 %s 架构的 asset: %s", arch_value, target_asset_name
+        )
         return None

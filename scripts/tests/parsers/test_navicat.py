@@ -1,12 +1,9 @@
 """NavicatPremiumCSParser 单元测试"""
 
-
 from constants.constants import ArchEnum
 from parsers.navicat import NavicatPremiumCSParser
 
-NAVICAT_HTML: str = (
-    '<html>Navicat Premium (Linux) version 17.3.8 released</html>'
-)
+NAVICAT_HTML: str = "<html>Navicat Premium (Linux) version 17.3.8 released</html>"
 
 NAVICAT_URLS: dict[str, str] = {
     "x86_64": "https://dn.navicat.com/download/navicat17-premium-cs-x86_64.AppImage",
