@@ -3,7 +3,7 @@
 # 基础设置
 settings:
   # 全局默认哈希算法（支持 sha256、sha512、b2）
-  hash_algorithm: sha512
+  hash_algorithm: b2
   # 下载设置
   download:
     # 下载重试次数
@@ -120,7 +120,6 @@ packages:
     pkgbuild: "packages/zen-browser-twilight-bin/PKGBUILD"
     update_source_url: true
     enable: true
-    hash_algorithm: b2
     arch:
       - x86_64
       - aarch64

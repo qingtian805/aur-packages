@@ -27,7 +27,7 @@ class Settings(BaseModel):
 
     model_config = ConfigDict(extra="ignore")
 
-    hash_algorithm: str = "sha512"
+    hash_algorithm: str = "b2"
     download: DownloadSettings = Field(default_factory=DownloadSettings)
 
 

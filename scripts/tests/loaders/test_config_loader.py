@@ -112,23 +112,23 @@ class TestConfigLoader:
         assert "aarch64" in navicat.urls
 
     def test_settings_hash_algorithm_default(self) -> None:
-        """全局默认 hash_algorithm 为 sha512"""
+        """全局默认 hash_algorithm 为 b2"""
         loader = ConfigLoader.load_from_yaml()
-        assert loader.settings.hash_algorithm == "sha512"
+        assert loader.settings.hash_algorithm == "b2"
 
-    def test_zen_browser_b2_override(self) -> None:
-        """zen-browser 包级覆盖为 b2"""
+    def test_zen_browser_uses_global_default(self) -> None:
+        """zen-browser 使用全局默认 b2（无需包级覆盖）"""
         loader = ConfigLoader.load_from_yaml()
         zen = loader.packages["zen-browser"]
-        assert zen.hash_algorithm == "b2"
-        assert zen.get_effective_hash_algorithm("sha512") == "b2"
+        assert zen.hash_algorithm is None
+        assert zen.get_effective_hash_algorithm("b2") == "b2"
 
     def test_qq_default_hash_algorithm(self) -> None:
         """qq 包未设置 hash_algorithm，使用全局默认"""
         loader = ConfigLoader.load_from_yaml()
         qq = loader.packages["qq"]
         assert qq.hash_algorithm is None
-        assert qq.get_effective_hash_algorithm("sha512") == "sha512"
+        assert qq.get_effective_hash_algorithm("b2") == "b2"
 
     def test_load_empty_yaml(self, tmp_path: Path) -> None:
         """空 YAML 文件抛出 ValueError"""
