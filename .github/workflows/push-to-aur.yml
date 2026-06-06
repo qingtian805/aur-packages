@@ -92,7 +92,7 @@ jobs:
 
   commit:
     name: Commit .SRCINFO
-    needs: generate-srcinfo
+    needs: [setup, generate-srcinfo]
     if: needs.setup.outputs.count != '0'
     runs-on: ubuntu-latest
     steps:
