@@ -123,3 +123,16 @@ packages:
     arch:
       - x86_64
       - aarch64
+
+  bt-dualboot:
+    name: bt-dualboot-ng
+    source: bt-dualboot-ng
+    source_url: "https://github.com/awsl1414/bt-dualboot"
+    fetch_url: "https://pypi.org/pypi/bt-dualboot-ng/json"
+    upstream: "awsl1414/bt-dualboot"
+    parser: PyPIParser
+    pkgbuild: "packages/bt-dualboot-ng/PKGBUILD"
+    update_source_url: true
+    enable: true
+    arch:
+      - any

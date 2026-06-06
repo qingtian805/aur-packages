@@ -12,6 +12,7 @@ class ArchEnum(Enum):
     AARCH64 = "aarch64"
     LOONG64 = "loong64"
     MIPS64EL = "mips64el"
+    ANY = "any"
 
 
 class HashAlgorithmEnum(Enum):
@@ -32,3 +33,4 @@ class ParserEnum(Enum):
     TRAE_US = "TraeParser_US"
     TRAE_CN = "TraeParser_CN"
     ZEN = "ZenParser"
+    BT_DUALBOOT = "PyPIParser"

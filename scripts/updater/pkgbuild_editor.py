@@ -91,6 +91,32 @@ class PKGBUILDEditor:
             flags=re.MULTILINE,
         )
 
+    def update_source(self, new_url: str) -> None:
+        """更新非架构特定的 source URL（用于 arch=('any') 包），保留已有的 :: 别名"""
+        # 匹配单引号或双引号包裹的 :: 别名格式
+        pattern = r"""^source=\((?:['"]([^'"]*)::[^'"]*['"]|.*)\)$"""
+        match = re.search(pattern, self.content, flags=re.MULTILINE)
+        if match and match.group(1):
+            replacement = f'source=("{match.group(1)}::{new_url}")'
+        else:
+            replacement = f"source=('{new_url}')"
+        self.content = re.sub(
+            r"^source=\(.*\)$",
+            replacement,
+            self.content,
+            flags=re.MULTILINE,
+        )
+
+    def update_checksum(
+        self,
+        new_checksum: str,
+        hash_algorithm: str = HashAlgorithmEnum.SHA512.value,
+    ) -> None:
+        """更新非架构特定的校验和字段（用于 arch=('any') 包）"""
+        pattern = f"^{hash_algorithm}sums=\\(.*\\)$"
+        replacement = f"{hash_algorithm}sums=('{new_checksum}')"
+        self.content = re.sub(pattern, replacement, self.content, flags=re.MULTILINE)
+
     def get_pkgver(self) -> str:
         """获取当前 pkgver 值"""
         match = re.search(r"^pkgver=(.*)$", self.content, flags=re.MULTILINE)

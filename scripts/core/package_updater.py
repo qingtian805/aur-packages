@@ -17,6 +17,7 @@ from fetcher.fetcher import Fetcher
 from loaders.config_loader import ConfigLoader, PackageConfig
 from parsers.base_parser import BaseParser
 from parsers.navicat import NavicatPremiumCSParser
+from parsers.pypi import PyPIParser
 from parsers.qq import QQParser
 from parsers.trae import TraeParser, TraeRegion
 from parsers.zen import ZenParser
@@ -55,6 +56,7 @@ class PackageUpdater:
             ParserEnum.TRAE_US.value: TraeParser(region=TraeRegion.US),
             ParserEnum.TRAE_CN.value: TraeParser(region=TraeRegion.CN),
             ParserEnum.ZEN.value: ZenParser(),
+            ParserEnum.BT_DUALBOOT.value: PyPIParser(package_name="bt-dualboot-ng"),
         }
 
         # 初始化下载器（使用配置的下载设置）
@@ -322,9 +324,13 @@ class PackageUpdater:
         )
         editor = PKGBUILDEditor(pkgbuild_path)
 
+        is_any_arch = len(supported_archs) == 1 and supported_archs[0] == ArchEnum.ANY
+
         current_checksums = {}
         for arch in supported_archs:
-            current_checksum = editor.get_checksum(arch.value, hash_algorithm)
+            # any 架构使用非架构特定的 b2sums=()
+            arch_key = None if is_any_arch else arch.value
+            current_checksum = editor.get_checksum(arch_key, hash_algorithm)
             if current_checksum:
                 current_checksums[arch.value] = current_checksum
             else:
@@ -366,7 +372,10 @@ class PackageUpdater:
 
         # 更新校验和（不更新 source URL，因为版本未变）
         for arch, checksum in new_checksums.items():
-            editor.update_arch_checksum(arch, checksum, hash_algorithm)
+            if is_any_arch:
+                editor.update_checksum(checksum, hash_algorithm)
+            else:
+                editor.update_arch_checksum(arch, checksum, hash_algorithm)
 
         editor.save()
         logger.info("  包 %s 的 pkgrel 已更新（版本未变但哈希已变）", package_name)
@@ -404,11 +413,20 @@ class PackageUpdater:
         editor.update_pkgver(new_version)
         editor.update_pkgrel(1)  # 重置 pkgrel 为 1
 
-        # 更新各架构的 source 和校验和
-        for arch, url in arch_urls.items():
-            if package_config.update_source_url:
-                editor.update_source_url(arch, url)
-            editor.update_arch_checksum(arch, checksums[arch], hash_algorithm)
+        # 更新 source 和校验和
+        is_any_arch = len(supported_archs) == 1 and supported_archs[0] == ArchEnum.ANY
+        if is_any_arch:
+            # 非架构特定包（arch=('any')）：使用 source=() 和 b2sums=()
+            for arch, url in arch_urls.items():
+                if package_config.update_source_url:
+                    editor.update_source(url)
+                editor.update_checksum(checksums[arch], hash_algorithm)
+        else:
+            # 架构特定包：使用 source_<arch>=() 和 b2sums_<arch>=()
+            for arch, url in arch_urls.items():
+                if package_config.update_source_url:
+                    editor.update_source_url(arch, url)
+                editor.update_arch_checksum(arch, checksums[arch], hash_algorithm)
 
         editor.save()
         logger.info("  5. PKGBUILD 已更新")
